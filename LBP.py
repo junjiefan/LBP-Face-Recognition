@@ -9,33 +9,38 @@ if __name__ == '__main__':
     uniform = 1  # 1: use uniform patterns, 0: not
     w_num = 7
     h_num = 7
-    #overlap_size = 4
+    overlap_size = 5
     path = '/cs/home/jf231/Dissertation/CS5099/PartImages/'
     character = 'P00A+000E+00.pgm'
-    # obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_size)
-    # obj.run_LBP(path, character)
-    # character = 'P00A+000E+45.pgm'
-    # acc = obj.calculate_Accuracy(path, character)
-    # print(acc)
-    characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
-    overlap_sizes = array([0,1,2,3,4,5,6,7,8,9,10])
-    acc = [0.0] * 11
-    for overlap_size in overlap_sizes:
-        obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_size)
-        obj.run_LBP(path, character)
-        temp = 0.0
-        for char in characters:
-            temp += obj.calculate_Accuracy(path, char)
-        acc[overlap_size] = temp / 4
-
-    plt.figure()
-    plt.plot(overlap_sizes, acc, c='c', ls='-.', linewidth=3)
-    plt.xlabel('Overlap Size')
-    plt.ylabel('Mean Recognition Rate')
-    plt.show()
+    obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_size)
+    obj.run_LBP(path, character)
+    characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm','P00A+000E+90.pgm'])
+    temp = 0.0
+    acc = 0.0
+    for char in characters:
+        temp = obj.calculate_Accuracy(path,char)
+        print('Recognition Rate: %-10.3f'%temp)
+        acc += temp
+    print('Final rate: %-10.3f'%(acc/5))
+    # characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
+    # overlap_sizes = array([0,1,2,3,4,5,6,7,8,9,10])
+    # acc = [0.0] * 11
+    # for overlap_size in overlap_sizes:
+    #     obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_size)
+    #     obj.run_LBP(path, character)
+    #     temp = 0.0
+    #     for char in characters:
+    #         temp += obj.calculate_Accuracy(path, char)
+    #     acc[overlap_size] = temp / 4
+    # plt.figure()
+    # plt.plot(overlap_sizes, acc, c='c', ls='-.', linewidth=3)
+    # plt.xlabel('Overlap Size')
+    # plt.ylabel('Mean Recognition Rate')
+    # plt.show()
     # 7*7 resions 0.975
     # 7*8 regions 0.875
     # 8*8 regions 0.9
+    # with overlap, 7*7, overlap size: 5 pixels
     ####################################################################################################################
     # Choose Radius, Number of sampling points, number of local regions
     # Choose 2, 8, 7
