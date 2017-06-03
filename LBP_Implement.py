@@ -21,6 +21,9 @@ class LBP_Implement(object):
         self.Histograms = 0
         self.ids = ids = [0 for i in range(self.Image_Num)]
         self.overlap_size = overlap_size
+        if (self.overlap_size > 0):
+            self.region_w_num = math.ceil(self.Width / (self.Width / self.w_num - self.overlap_size))
+            self.region_h_num = math.ceil(self.Height / (self.Height / self.h_num - self.overlap_size))
         if (self.uniform == 1):
             self.Patterns = self.Points * (self.Points - 1) + 3
             # P*(P-1) for patterns with two transitions,
@@ -146,7 +149,7 @@ class LBP_Implement(object):
         x2 = x1 + 1
         y1 = int(y)
         y2 = y1 + 1
-        if ((y2 < self.Width) & (x2 < self.Height)):
+        if ((y2 < self.Width) and (x2 < self.Height)):
             P11 = face[x1, y1]
             P12 = face[x1, y2]
             P21 = face[x2, y1]
@@ -167,11 +170,9 @@ class LBP_Implement(object):
         mask_height, mask_width = int(self.Height / self.h_num), int(self.Width / self.w_num)
         # Divide the image into local regions
         if self.overlap_size > 0:
-            region_w_num = math.ceil(self.Width / (self.Width / self.w_num - self.overlap_size))
-            region_h_num = math.ceil(self.Height / (self.Height / self.h_num - self.overlap_size))
-            Histogram = mat(zeros((self.Patterns, region_w_num * region_h_num)))
-            for i in range(region_h_num):
-                for j in range(region_w_num):
+            Histogram = mat(zeros((self.Patterns, self.region_w_num * self.region_h_num)))
+            for i in range(self.region_h_num):
+                for j in range(self.region_w_num):
                     mask = zeros(shape(Img), uint8)
                     start_x = i * mask_height - i * self.overlap_size
                     end_x = (i + 1) * mask_height - i * self.overlap_size
@@ -185,21 +186,24 @@ class LBP_Implement(object):
                             x1 = self.Height - mask_height - 1
                             x2 = self.Height - 1
                             mask[x1:x2, start_y:end_y] = 255
-                        # mask[start_x:(self.Height - 1), start_y:end_y] = 255
-                        # mask[0:end_x - self.Height + 1, start_y:end_y] = 255
+                            # mask[start_x:(self.Height - 1), start_y:end_y] = 255
+                            # mask[0:(end_x - self.Height + 1), start_y:end_y] = 255
                         if (end_x < self.Height and end_y >= self.Width):
                             y1 = self.Width - mask_width - 1
                             y2 = self.Width - 1
                             mask[start_x:end_x, y1:y2] = 255
-                        # mask[start_x:end_x, start_y:(self.Width - 1)] = 255
-                        # mask[start_x:end_x, 0:end_y - self.Width + 1] = 255
+                            # mask[start_x:end_x, start_y:(self.Width - 1)] = 255
+                            # mask[start_x:end_x, 0:(end_y - self.Width + 1)] = 255
                         if (end_x >= self.Height and end_y >= self.Width):
                             x1 = self.Height - mask_height - 1
                             x2 = self.Height - 1
                             y1 = self.Width - mask_width - 1
                             y2 = self.Width - 1
-                            mask[start_x:end_x, y1:y2] = 255
-                    # mask[start_x:(self.Height - 1), start_y:(self.Width - 1)] = 255
+                            mask[x1:x2, y1:y2] = 255
+                            # mask[start_x:(self.Height - 1), start_y:(self.Width - 1)] = 255
+                            # mask[start_x:(self.Height - 1),0:(end_y - self.Width + 1)] = 255
+                            # mask[0:(end_x - self.Height + 1),0:(end_y - self.Width + 1)] =255
+                            # mask[0:(end_x - self.Height + 1),start_y:(self.Width - 1)] = 255
                     hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
                     # The image; the channel; the mask; the number of bins; the range of value
                     Histogram[:, (i + 1) * (j + 1) - 1] = mat(hist).flatten().T
@@ -244,9 +248,8 @@ class LBP_Implement(object):
         self.LBPoperator = self.LBP(FaceMat, 1)
         # Calculate histograms
         if self.overlap_size > 0:
-            region_w_num = math.ceil(self.Width / (self.Width / self.w_num - self.overlap_size))
-            region_h_num = math.ceil(self.Height / (self.Height / self.h_num - self.overlap_size))
-            self.Histograms = mat(zeros((self.Patterns * region_w_num * region_h_num, shape(self.LBPoperator)[1])))
+            self.Histograms = mat(
+                zeros((self.Patterns * self.region_w_num * self.region_h_num, shape(self.LBPoperator)[1])))
         else:
             self.Histograms = mat(zeros((self.Patterns * self.w_num * self.h_num, shape(self.LBPoperator)[1])))
 
@@ -274,3 +277,48 @@ class LBP_Implement(object):
             return accuracy
         else:
             return 0
+
+    def calculate_Weights(self, mypath, character):
+        if (self.overlap_size > 0):
+            weights = mat(zeros((self.Image_Num, self.region_h_num * self.region_w_num)))
+        else:
+            weights = mat(zeros((self.Image_Num, self.w_num * self.h_num)))
+        rows, columns = shape(weights)
+        count = 0
+        for m in os.listdir(mypath):
+            str = m.split('_')
+            if (len(str) == 2):
+                if str[1] == character:
+                    image = cv2.imread(mypath + m, 0)
+                    id = int(m[5:7])
+                    imageLBP = self.LBP(mat(image).flatten().T, 0)
+                    histogram = self.calHistogram(imageLBP)
+                    histogram = histogram.reshape(self.Patterns, columns)
+                    temp = [0] * columns
+                    for i in range(columns):
+                        # calculate the recognition rate for each region
+                        local_region = histogram[:, i]
+                        min_index = 0
+                        min_value = inf
+                        for j in range(self.Image_Num):
+                            stored_hist = self.Histograms[:, j]
+                            stored_hist = stored_hist.reshape(self.Patterns, columns)
+                            stored_region = stored_hist[:, i]
+                            distance = ((array(local_region-stored_region)**2).sum())/(
+                                (array(local_region+stored_region)).sum())
+                            if(distance < min_value):
+                                min_index = j
+                                min_value = distance
+                        match_id =  self.ids[min_index]
+                        if(id == match_id):
+                            temp[i] = 1
+                        else:
+                            temp[i] = 0
+                    weights[count,:] = temp
+                    count += 1
+
+        weight = weights.mean(axis=0)
+        weight = weight.reshape(self.h_num, self.w_num)
+        #weight = weight.reshape(self.region_h_num, self.region_w_num)
+        return weight
+

@@ -9,22 +9,26 @@ if __name__ == '__main__':
     uniform = 1  # 1: use uniform patterns, 0: not
     w_num = 7
     h_num = 7
-    overlap_size = 5
+    overlap_size = 0
     path = '/cs/home/jf231/Dissertation/CS5099/PartImages/'
     character = 'P00A+000E+00.pgm'
     obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_size)
     obj.run_LBP(path, character)
-    characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm','P00A+000E+90.pgm'])
-    temp = 0.0
-    acc = 0.0
-    for char in characters:
-        temp = obj.calculate_Accuracy(path,char)
-        print('Recognition Rate: %-10.3f'%temp)
-        acc += temp
-    print('Final rate: %-10.3f'%(acc/5))
+    char = 'P00A+000E+20.pgm'
+    weights = obj.calculate_Weights(path,character)
+    print(weights)
+
     # characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
-    # overlap_sizes = array([0,1,2,3,4,5,6,7,8,9,10])
-    # acc = [0.0] * 11
+    # temp = 0.0
+    # acc = 0.0
+    # for char in characters:
+    #     temp = obj.calculate_Accuracy(path,char)
+    #     print('Recognition Rate: %-10.3f'%temp)
+    #     acc += temp
+    # print('Final rate: %-10.3f'%(acc/4))
+    # characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
+    # overlap_sizes = array([0,1,2,3,4,5,6,7,8])
+    # acc = [0.0] * 9
     # for overlap_size in overlap_sizes:
     #     obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_size)
     #     obj.run_LBP(path, character)
@@ -45,7 +49,6 @@ if __name__ == '__main__':
     # Choose Radius, Number of sampling points, number of local regions
     # Choose 2, 8, 7
     # rate = [([0.0] * 7) for i in range(3)]
-    # # win_size = array(['42*48', '33*38', '28*32', '24*27', '21*24', '18*21', '16*19'])
     # win_num = array([4, 5, 6, 7, 8, 9, 10])
     # characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm',])
     # for j in range(7):
