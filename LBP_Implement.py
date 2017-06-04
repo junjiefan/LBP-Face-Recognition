@@ -10,7 +10,7 @@ class LBP_Implement(object):
     def __init__(self, R, P, type, uniform, w_num, h_num, overlap_size):
         self.Width = 168
         self.Height = 192
-        self.Image_Num = 10
+        self.Image_Num = 15
         self.Radius = R
         self.Points = P
         self.lbp_type = type
@@ -19,6 +19,7 @@ class LBP_Implement(object):
         self.h_num = h_num
         self.LBPoperator = 0
         self.Histograms = 0
+        self.weight = 0
         self.ids = ids = [0 for i in range(self.Image_Num)]
         self.overlap_size = overlap_size
         if (self.overlap_size > 0):
@@ -66,6 +67,7 @@ class LBP_Implement(object):
                     FaceMat[j, :] = mat(img).flatten()
                     j = j + 1
         print('Successfully loaded %s images' % j)
+        print(self.ids)
         return FaceMat  # Rotate the binary string and obtain a minimal binary number for each pattern
 
     # Start from the end of the binary string, remove all '0' at the end and place them in the begining.
@@ -131,7 +133,7 @@ class LBP_Implement(object):
                         tempface[x, y] = int(repixel, base=2)
             LBPoperator[:, i] = tempface.flatten().T
             if save == 1:
-                cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
+                cv2.imwrite('F:/dissertation/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
         return LBPoperator
 
     # Calculate the number of transitions in the binary pattern and judge whether it is a uniform pattern
@@ -166,11 +168,11 @@ class LBP_Implement(object):
     # Calculate histogram for each image
     def calHistogram(self, ImgLBPope):
         Img = ImgLBPope.reshape(self.Height, self.Width)  # Height: rows, Width: columns
-        # rows, columns = shape(Img)
         mask_height, mask_width = int(self.Height / self.h_num), int(self.Width / self.w_num)
         # Divide the image into local regions
         if self.overlap_size > 0:
             Histogram = mat(zeros((self.Patterns, self.region_w_num * self.region_h_num)))
+            count = 0
             for i in range(self.region_h_num):
                 for j in range(self.region_w_num):
                     mask = zeros(shape(Img), uint8)
@@ -186,29 +188,24 @@ class LBP_Implement(object):
                             x1 = self.Height - mask_height - 1
                             x2 = self.Height - 1
                             mask[x1:x2, start_y:end_y] = 255
-                            # mask[start_x:(self.Height - 1), start_y:end_y] = 255
-                            # mask[0:(end_x - self.Height + 1), start_y:end_y] = 255
                         if (end_x < self.Height and end_y >= self.Width):
                             y1 = self.Width - mask_width - 1
                             y2 = self.Width - 1
                             mask[start_x:end_x, y1:y2] = 255
-                            # mask[start_x:end_x, start_y:(self.Width - 1)] = 255
-                            # mask[start_x:end_x, 0:(end_y - self.Width + 1)] = 255
                         if (end_x >= self.Height and end_y >= self.Width):
                             x1 = self.Height - mask_height - 1
                             x2 = self.Height - 1
                             y1 = self.Width - mask_width - 1
                             y2 = self.Width - 1
                             mask[x1:x2, y1:y2] = 255
-                            # mask[start_x:(self.Height - 1), start_y:(self.Width - 1)] = 255
-                            # mask[start_x:(self.Height - 1),0:(end_y - self.Width + 1)] = 255
-                            # mask[0:(end_x - self.Height + 1),0:(end_y - self.Width + 1)] =255
-                            # mask[0:(end_x - self.Height + 1),start_y:(self.Width - 1)] = 255
                     hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
                     # The image; the channel; the mask; the number of bins; the range of value
-                    Histogram[:, (i + 1) * (j + 1) - 1] = mat(hist).flatten().T
+                    Histogram[:, count] = mat(hist).flatten().T
+                    count += 1
         else:
             Histogram = mat(zeros((self.Patterns, self.w_num * self.h_num)))
+            # print(shape(Histogram))
+            count = 0
             for i in range(self.h_num):
                 for j in range(self.w_num):
                     # unit8: unsigned integer, 0 - 255
@@ -216,7 +213,9 @@ class LBP_Implement(object):
                     mask[i * mask_height: (i + 1) * mask_height, j * mask_width:(j + 1) * mask_width] = 255
                     hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
                     # The image; the channel; the mask; the number of bins; the range of value
-                    Histogram[:, (i + 1) * (j + 1) - 1] = mat(hist).flatten().T
+                    Histogram[:, count] = mat(hist).flatten().T
+                    count += 1
+        # print(Histogram)
         return Histogram.flatten().T
 
     # recogniseImg: the image needed to be matched
@@ -225,19 +224,32 @@ class LBP_Implement(object):
     def recogniseFace(self, recogniseImg):
         recogniseImg = recogniseImg.T
         ImgLBPope = self.LBP(recogniseImg, 0)
-        recongniseHistogram = self.calHistogram(ImgLBPope)
+        recogniseHistogram = self.calHistogram(ImgLBPope)
         minIndex = 0
         minVals = inf
-        # inf stands for infinity, a value that is greater than any other value
         # Find the most close one, the smallest difference
         for i in range(shape(self.LBPoperator)[1]):
             Histogram = self.Histograms[:, i]
             # Utilize Chi square distance to find the most close match
-            distance = ((array(Histogram - recongniseHistogram) ** 2).sum()) / (
-                (array(Histogram + recongniseHistogram)).sum())
+            if (self.weight == 0):
+                distance = ((array(Histogram - recogniseHistogram) ** 2).sum()) / (
+                    (array(Histogram + recogniseHistogram)).sum())
+            else:
+                if (self.overlap_size):
+                    regions = self.h_num * self.w_num
+                else:
+                    regions = self.region_h_num * self.region_w_num
+                Histogram = reshape(self.Patterns, regions)
+                recogniseHistogram = reshape(self.Patterns, regions)
+                distance = 0
+                for index in range(regions):
+                    distance += (((array(Histogram[:, index] - recogniseHistogram[:, index])) ** 2).sum() / (
+                        array(Histogram[:, index] + recogniseHistogram[:, index])).sum()) * self.weight[index]
+
             if distance < minVals:
                 minIndex = i
                 minVals = distance
+
         return minIndex
 
     @fn_timer
@@ -252,7 +264,6 @@ class LBP_Implement(object):
                 zeros((self.Patterns * self.region_w_num * self.region_h_num, shape(self.LBPoperator)[1])))
         else:
             self.Histograms = mat(zeros((self.Patterns * self.w_num * self.h_num, shape(self.LBPoperator)[1])))
-
         for i in range(shape(self.LBPoperator)[1]):
             Histogram = self.calHistogram(self.LBPoperator[:, i])
             self.Histograms[:, i] = Histogram
@@ -270,8 +281,6 @@ class LBP_Implement(object):
                     if self.ids[index] == id:
                         count = count + 1
                     j = j + 1
-        # print('Total: %d images'%j)
-        # print('%d images mathched' % count)
         if j > 0:
             accuracy = float(count) / j
             return accuracy
@@ -279,10 +288,14 @@ class LBP_Implement(object):
             return 0
 
     def calculate_Weights(self, mypath, character):
-        if (self.overlap_size > 0):
-            weights = mat(zeros((self.Image_Num, self.region_h_num * self.region_w_num)))
+        if(self.overlap_size ==0):
+            my_rows = self.h_num
+            my_columns = self.w_num
         else:
-            weights = mat(zeros((self.Image_Num, self.w_num * self.h_num)))
+            my_rows = self.region_h_num
+            mycolumns = self.region_w_num
+
+        weights = mat(zeros((self.Image_Num, my_rows*my_columns)))
         rows, columns = shape(weights)
         count = 0
         for m in os.listdir(mypath):
@@ -304,21 +317,45 @@ class LBP_Implement(object):
                             stored_hist = self.Histograms[:, j]
                             stored_hist = stored_hist.reshape(self.Patterns, columns)
                             stored_region = stored_hist[:, i]
-                            distance = ((array(local_region-stored_region)**2).sum())/(
-                                (array(local_region+stored_region)).sum())
-                            if(distance < min_value):
+                            para1 = (array(local_region - stored_region) ** 2).sum()
+                            para2 = (array(local_region + stored_region)).sum()
+                            distance = para1 / para2
+                            if (distance < min_value):
                                 min_index = j
                                 min_value = distance
-                        match_id =  self.ids[min_index]
-                        if(id == match_id):
+                        match_id = self.ids[min_index]
+                        if (id == match_id):
                             temp[i] = 1
                         else:
                             temp[i] = 0
-                    weights[count,:] = temp
+                    weights[count, :] = temp
                     count += 1
 
-        weight = weights.mean(axis=0)
-        weight = weight.reshape(self.h_num, self.w_num)
-        #weight = weight.reshape(self.region_h_num, self.region_w_num)
-        return weight
+        weights = weights.mean(axis=0)
+        temp = array([0.0]*columns)
+        for n in range(columns):
+            temp[n] = weights[0, n]
 
+        temp = temp.reshape(my_rows, my_columns)
+        H, W = shape(temp)
+        adjust = int(W / 2)
+        for row in range(H):
+            for col in range(adjust):
+                average = (temp[row][col] + temp[row][W - col - 1]) / 2
+                temp[row][col] = average
+                temp[row][W - col - 1] = average
+        temp = temp.flatten()
+        sorted_weights = sorted(temp)
+        thresholds = [0.1, 0.8, 0.9, 1]
+        weight_standard = [0, 1, 2, 4]
+        start = -1
+        for t in range(4):
+            index = int(columns * thresholds[t]) - 1
+            end = sorted_weights[index]
+            for j in range(columns):
+                if ((temp[j] <= end) and (temp[j] > start)):
+                    temp[j] = weight_standard[t]
+            start = end
+        self.weight = temp
+        weights = temp.reshape(my_rows, my_columns)
+        return weights
