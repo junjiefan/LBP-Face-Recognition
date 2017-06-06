@@ -20,11 +20,16 @@ class LBP_Implement(object):
         self.LBPoperator = 0
         self.Histograms = 0
         self.weight = 0
+        self.isweighted = 0
         self.ids = ids = [0 for i in range(self.Image_Num)]
         self.overlap_size = overlap_size
         if (self.overlap_size > 0):
-            self.region_w_num = math.ceil(self.Width / (self.Width / self.w_num - self.overlap_size))
-            self.region_h_num = math.ceil(self.Height / (self.Height / self.h_num - self.overlap_size))
+            region_width = self.Width/self.w_num
+            region_height = self.Height/self.h_num
+            self.region_w_num = 1 + math.ceil((self.Width -region_width) / (region_width - self.overlap_size))
+            self.region_h_num = 1 + math.ceil((self.Height -region_height) / (region_height- self.overlap_size))
+            print(self.region_h_num)
+            print(self.region_w_num)
         if (self.uniform == 1):
             self.Patterns = self.Points * (self.Points - 1) + 3
             # P*(P-1) for patterns with two transitions,
@@ -231,16 +236,17 @@ class LBP_Implement(object):
         for i in range(shape(self.LBPoperator)[1]):
             Histogram = self.Histograms[:, i]
             # Utilize Chi square distance to find the most close match
-            if (self.weight == 0):
+
+            if (self.isweighted == 0):
                 distance = ((array(Histogram - recogniseHistogram) ** 2).sum()) / (
                     (array(Histogram + recogniseHistogram)).sum())
             else:
-                if (self.overlap_size):
+                if (self.overlap_size==0):
                     regions = self.h_num * self.w_num
                 else:
                     regions = self.region_h_num * self.region_w_num
-                Histogram = reshape(self.Patterns, regions)
-                recogniseHistogram = reshape(self.Patterns, regions)
+                Histogram = Histogram.reshape(self.Patterns, regions)
+                recogniseHistogram = recogniseHistogram.reshape(self.Patterns, regions)
                 distance = 0
                 for index in range(regions):
                     distance += (((array(Histogram[:, index] - recogniseHistogram[:, index])) ** 2).sum() / (
@@ -286,16 +292,17 @@ class LBP_Implement(object):
             return accuracy
         else:
             return 0
-
+    @fn_timer
     def calculate_Weights(self, mypath, character):
-        if(self.overlap_size ==0):
+        self.isweighted = 1
+        if (self.overlap_size == 0):
             my_rows = self.h_num
             my_columns = self.w_num
         else:
             my_rows = self.region_h_num
-            mycolumns = self.region_w_num
+            my_columns = self.region_w_num
 
-        weights = mat(zeros((self.Image_Num, my_rows*my_columns)))
+        weights = mat(zeros((self.Image_Num, my_rows * my_columns)))
         rows, columns = shape(weights)
         count = 0
         for m in os.listdir(mypath):
@@ -332,11 +339,12 @@ class LBP_Implement(object):
                     count += 1
 
         weights = weights.mean(axis=0)
-        temp = array([0.0]*columns)
+        temp = array([0.0] * columns)
         for n in range(columns):
             temp[n] = weights[0, n]
 
         temp = temp.reshape(my_rows, my_columns)
+        #print(temp)
         H, W = shape(temp)
         adjust = int(W / 2)
         for row in range(H):
@@ -357,5 +365,7 @@ class LBP_Implement(object):
                     temp[j] = weight_standard[t]
             start = end
         self.weight = temp
+        #print(shape(self.weight))
+        #print(self.weight[0])
         weights = temp.reshape(my_rows, my_columns)
         return weights
