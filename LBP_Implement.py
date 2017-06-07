@@ -7,10 +7,10 @@ from functools import wraps
 
 
 class LBP_Implement(object):
-    def __init__(self, R, P, type, uniform, w_num, h_num, overlap_size):
+    def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio):
         self.Width = 168
         self.Height = 192
-        self.Image_Num = 15
+        self.Image_Num = 38
         self.Radius = R
         self.Points = P
         self.lbp_type = type
@@ -22,14 +22,14 @@ class LBP_Implement(object):
         self.weight = 0
         self.isweighted = 0
         self.ids = ids = [0 for i in range(self.Image_Num)]
-        self.overlap_size = overlap_size
-        if (self.overlap_size > 0):
+        self.overlap_ratio = overlap_ratio
+        if (self.overlap_ratio > 0):
             region_width = self.Width/self.w_num
             region_height = self.Height/self.h_num
+            self.overlap_size = int(region_width * self.overlap_ratio)
+            print('Overlap_size: %d' % self.overlap_size)
             self.region_w_num = 1 + math.ceil((self.Width -region_width) / (region_width - self.overlap_size))
             self.region_h_num = 1 + math.ceil((self.Height -region_height) / (region_height- self.overlap_size))
-            print(self.region_h_num)
-            print(self.region_w_num)
         if (self.uniform == 1):
             self.Patterns = self.Points * (self.Points - 1) + 3
             # P*(P-1) for patterns with two transitions,
@@ -175,7 +175,7 @@ class LBP_Implement(object):
         Img = ImgLBPope.reshape(self.Height, self.Width)  # Height: rows, Width: columns
         mask_height, mask_width = int(self.Height / self.h_num), int(self.Width / self.w_num)
         # Divide the image into local regions
-        if self.overlap_size > 0:
+        if self.overlap_ratio > 0:
             Histogram = mat(zeros((self.Patterns, self.region_w_num * self.region_h_num)))
             count = 0
             for i in range(self.region_h_num):
@@ -241,7 +241,7 @@ class LBP_Implement(object):
                 distance = ((array(Histogram - recogniseHistogram) ** 2).sum()) / (
                     (array(Histogram + recogniseHistogram)).sum())
             else:
-                if (self.overlap_size==0):
+                if (self.overlap_ratio==0):
                     regions = self.h_num * self.w_num
                 else:
                     regions = self.region_h_num * self.region_w_num
@@ -265,7 +265,7 @@ class LBP_Implement(object):
         # Calculate LBP opearters for all loaded images
         self.LBPoperator = self.LBP(FaceMat, 1)
         # Calculate histograms
-        if self.overlap_size > 0:
+        if self.overlap_ratio > 0:
             self.Histograms = mat(
                 zeros((self.Patterns * self.region_w_num * self.region_h_num, shape(self.LBPoperator)[1])))
         else:
@@ -295,7 +295,7 @@ class LBP_Implement(object):
     @fn_timer
     def calculate_Weights(self, mypath, character):
         self.isweighted = 1
-        if (self.overlap_size == 0):
+        if (self.overlap_ratio == 0):
             my_rows = self.h_num
             my_columns = self.w_num
         else:
