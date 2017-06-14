@@ -9,9 +9,9 @@ if __name__ == '__main__':
     uniform = 1  # 1: use uniform patterns, 0: not
     w_num = 7
     h_num = 7
-    overlap_ratio = 0  # from 0 to 1
-    path = '/cs/home/jf231/Dissertation/CS5099/Images/'
-    # path = 'F:/dissertation/PartImages/'
+    overlap_ratio = 0 # from 0 to 1
+    # path = '/cs/home/jf231/Dissertation/CS5099/Images/'
+    path = 'F:/dissertation/Images/'
     character = 'P00A+000E+00.pgm'
     obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio)
     obj.run_LBP(path, character)
@@ -27,4 +27,3 @@ if __name__ == '__main__':
         print('Recognition Rate: %-10.3f'%temp)
         acc += temp
     print('Final rate: %-10.3f'%(acc/5))
-

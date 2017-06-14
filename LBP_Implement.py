@@ -56,7 +56,7 @@ class LBP_Implement(object):
     # each folder contains several images of one person, and totally, 38 folders
     def loadImages(self, mypath, character):
         FaceMat = mat(zeros((self.Image_Num,
-                             self.Width * self.Height)))  # Establish a matrix, first parameter is the number of images, second one is the resolution
+                             self.Width * self.Height)))
         j = 0
         # for m in os.listdir(mypath):
         #     for n in os.listdir(os.path.join(mypath, m)):
@@ -90,7 +90,7 @@ class LBP_Implement(object):
         return result
 
     # Main component of LBP
-    def LBP(self, FaceMat, save):
+    def LBP(self, FaceMat, train):
         R = self.Radius
         # The offset of 3*3 neighbors
         if (self.lbp_type == 1):
@@ -138,22 +138,22 @@ class LBP_Implement(object):
                     else:
                         tempface[x, y] = int(repixel, base=2)
             LBPoperator[:, i] = tempface.flatten().T
-            self.gradients[:, i] = self.cal_Gradient(face)
-            if save == 1:
-                cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
+            if train == 1:
+                self.gradients[:, i] = self.cal_Gradient(face)
+            #     cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
             # print(tempface[0:10, 0:10])
         return LBPoperator
 
     def cal_Gradient(self, face):
-        x64 = cv2.Sobel(face, cv2.CV_64F, 1, 0,ksize = 5)
-        y64 = cv2.Sobel(face, cv2.CV_64F, 0, 1,ksize = 5)
+        x64 = cv2.Sobel(face, cv2.CV_64F, 1, 0, ksize=5)
+        y64 = cv2.Sobel(face, cv2.CV_64F, 0, 1, ksize=5)
         sobelx = uint8(absolute(x64))
         sobely = uint8(absolute(y64))
         res = cv2.addWeighted(sobelx, 0.5, sobely, 0.5, 0)
         max = amax(res)
         min = amin(res)
         normalized = around((res - min) / (max - min), decimals=3)
-        #print(res[0:10, 0:10])
+        # print(res[0:10, 0:10])
         res = normalized.flatten().T.reshape(self.Width * self.Height, 1)
         return res
 
@@ -180,8 +180,6 @@ class LBP_Implement(object):
             x = x - x1
             y = y - y1
             pixel = (1 - x) * (1 - y) * P11 + x * (1 - y) * P21 + (1 - x) * y * P12 + x * y * P22
-            # pixel = (((x2 - x) * (y2 - y))/((x2 - x1) * (y2 - y1))) * P11 + (((x - x1) * (y2 - y)) / ((x2 - x1) * (y2 - y1))) * P21\
-            #         + (((x2 - x) * (y - y1)) / ((x2 - x1) * (y2 - y1))) * P12 + (((x - x1) * (y - y1)) / ((x2 - x1) * (y2 - y1))) * P22
             return int(pixel)
         else:
             return 0
@@ -207,23 +205,33 @@ class LBP_Implement(object):
                     end_y = (j + 1) * mask_width - j * self.overlap_size
 
                     if (end_x < self.Height and end_y < self.Width):
-                        mask[start_x:end_x, start_y:end_y] = 255
+                        # mask[start_x:end_x, start_y:end_y] = 255
+                        x1 = start_x; x2 = end_x
+                        y1 = start_y; y2 = end_y
                     else:
                         if (end_x >= self.Height and end_y < self.Width):
-                            x1 = self.Height - mask_height - 1
-                            x2 = self.Height - 1
-                            mask[x1:x2, start_y:end_y] = 255
+                            x1 = self.Height - mask_height - 1; y1 = start_y
+                            x2 = self.Height - 1; y2 = end_y
+                            #mask[x1:x2, start_y:end_y] = 255
                         if (end_x < self.Height and end_y >= self.Width):
-                            y1 = self.Width - mask_width - 1
-                            y2 = self.Width - 1
+                            y1 = self.Width - mask_width - 1; x1 = start_x
+                            y2 = self.Width - 1; x2 = end_x
                             mask[start_x:end_x, y1:y2] = 255
                         if (end_x >= self.Height and end_y >= self.Width):
                             x1 = self.Height - mask_height - 1
                             x2 = self.Height - 1
                             y1 = self.Width - mask_width - 1
                             y2 = self.Width - 1
-                            mask[x1:x2, y1:y2] = 255
-                    hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
+                            # mask[x1:x2, y1:y2] = 255
+                    # hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
+                    hist = [0.0] * 59
+                    for c in range(x1, x2):
+                        for r in range(y1, y2):
+                            pattern = Img[c, r]
+                            for k in range(59):
+                                if pattern == patterns[k]:
+                                    hist[k] += gradients[c, r]
+                                    # hist[k] += 1
                     # The image; the channel; the mask; the number of bins; the range of value
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
@@ -233,7 +241,6 @@ class LBP_Implement(object):
             count = 0
             for i in range(self.h_num):
                 for j in range(self.w_num):
-                    # unit8: unsigned integer, 0 - 255
                     # mask = zeros(shape(Img), uint8)
                     # mask[i * mask_height: (i + 1) * mask_height, j * mask_width:(j + 1) * mask_width] = 255
                     # hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
@@ -244,7 +251,7 @@ class LBP_Implement(object):
                             for k in range(59):
                                 if pattern == patterns[k]:
                                     hist[k] += gradients[c, r]
-                                    #hist[k] += 1
+                                    # hist[k] += 1
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
                     # plt.hist(Histogram[:,0],bins = 59)
