@@ -145,8 +145,8 @@ class LBP_Implement(object):
         return LBPoperator
 
     def cal_Gradient(self, face):
-        x64 = cv2.Sobel(face, cv2.CV_64F, 1, 0)
-        y64 = cv2.Sobel(face, cv2.CV_64F, 0, 1)
+        x64 = cv2.Sobel(face, cv2.CV_64F, 1, 0,ksize = 5)
+        y64 = cv2.Sobel(face, cv2.CV_64F, 0, 1,ksize = 5)
         sobelx = uint8(absolute(x64))
         sobely = uint8(absolute(y64))
         res = cv2.addWeighted(sobelx, 0.5, sobely, 0.5, 0)
@@ -234,17 +234,17 @@ class LBP_Implement(object):
             for i in range(self.h_num):
                 for j in range(self.w_num):
                     # unit8: unsigned integer, 0 - 255
-                    mask = zeros(shape(Img), uint8)
-                    mask[i * mask_height: (i + 1) * mask_height, j * mask_width:(j + 1) * mask_width] = 255
-                    hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
-                    # hist = [0.0] * 59
-                    # for c in range(i * mask_height, (i + 1) * mask_height):
-                    #     for r in range(j * mask_width, (j + 1) * mask_width):
-                    #         pattern = Img[c, r]
-                    #         for k in range(59):
-                    #             if pattern == patterns[k]:
-                    #                 #hist[k] += gradients[c, r]
-                    #                 hist[k] += 1
+                    # mask = zeros(shape(Img), uint8)
+                    # mask[i * mask_height: (i + 1) * mask_height, j * mask_width:(j + 1) * mask_width] = 255
+                    # hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
+                    hist = [0.0] * 59
+                    for c in range(i * mask_height, (i + 1) * mask_height):
+                        for r in range(j * mask_width, (j + 1) * mask_width):
+                            pattern = Img[c, r]
+                            for k in range(59):
+                                if pattern == patterns[k]:
+                                    hist[k] += gradients[c, r]
+                                    #hist[k] += 1
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
                     # plt.hist(Histogram[:,0],bins = 59)
