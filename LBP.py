@@ -13,38 +13,18 @@ if __name__ == '__main__':
     path = '/cs/home/jf231/Dissertation/CS5099/Images/'
     # path = 'F:/dissertation/PartImages/'
     character = 'P00A+000E+00.pgm'
-    # obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_size)
-    # obj.run_LBP(path, character)
+    obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio)
+    obj.run_LBP(path, character)
     # char = 'P00A+000E+20.pgm'
     # weights = obj.calculate_Weights(path,char)
     # print(weights)
-    #
-    # characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
-    # temp = 0.0
-    # acc = 0.0
-    # for char in characters:
-    #     temp = obj.calculate_Accuracy(path,char)
-    #     print('Recognition Rate: %-10.3f'%temp)
-    #     acc += temp
-    # print('Final rate: %-10.3f'%(acc/4))
+    # #
+    characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm','P00A+020E-40.pgm'])
+    temp = 0.0
+    acc = 0.0
+    for char in characters:
+        temp = obj.calculate_Accuracy(path,char)
+        print('Recognition Rate: %-10.3f'%temp)
+        acc += temp
+    print('Final rate: %-10.3f'%(acc/5))
 
-    # 7*7
-    # overlap_ratio 0.25, 6 pixels
-
-    # characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
-    # overlap_ratios = array([0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4])
-    # acc = [0.0] * 8
-    # count = 0
-    # for overlap_ratio in overlap_ratios:
-    #     obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio)
-    #     obj.run_LBP(path, character)
-    #     temp = 0.0
-    #     for char in characters:
-    #         temp += obj.calculate_Accuracy(path, char)
-    #     acc[count] = temp / 4
-    #     count +=1
-    # plt.figure()
-    # plt.plot(overlap_ratios, acc, c='c', ls='-.', linewidth=3)
-    # plt.xlabel('Overlap Size')
-    # plt.ylabel('Mean Recognition Rate')
-    # plt.show()

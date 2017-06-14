@@ -4,6 +4,7 @@ from numpy import *
 import cv2
 import time
 from functools import wraps
+import matplotlib.pyplot as plt
 
 
 class LBP_Implement(object):
@@ -21,15 +22,16 @@ class LBP_Implement(object):
         self.Histograms = 0
         self.weight = 0
         self.isweighted = 0
-        self.ids = ids = [0 for i in range(self.Image_Num)]
+        self.ids = [0 for i in range(self.Image_Num)]
         self.overlap_ratio = overlap_ratio
+        self.gradients = mat(zeros((self.Width * self.Height, self.Image_Num)))
         if (self.overlap_ratio > 0):
-            region_width = self.Width/self.w_num
-            region_height = self.Height/self.h_num
+            region_width = self.Width / self.w_num
+            region_height = self.Height / self.h_num
             self.overlap_size = int(region_width * self.overlap_ratio)
             print('Overlap_size: %d' % self.overlap_size)
-            self.region_w_num = 1 + math.ceil((self.Width -region_width) / (region_width - self.overlap_size))
-            self.region_h_num = 1 + math.ceil((self.Height -region_height) / (region_height- self.overlap_size))
+            self.region_w_num = 1 + math.ceil((self.Width - region_width) / (region_width - self.overlap_size))
+            self.region_h_num = 1 + math.ceil((self.Height - region_height) / (region_height - self.overlap_size))
         if (self.uniform == 1):
             self.Patterns = self.Points * (self.Points - 1) + 3
             # P*(P-1) for patterns with two transitions,
@@ -72,7 +74,6 @@ class LBP_Implement(object):
                     FaceMat[j, :] = mat(img).flatten()
                     j = j + 1
         print('Successfully loaded %s images' % j)
-        print(self.ids)
         return FaceMat  # Rotate the binary string and obtain a minimal binary number for each pattern
 
     # Start from the end of the binary string, remove all '0' at the end and place them in the begining.
@@ -137,9 +138,24 @@ class LBP_Implement(object):
                     else:
                         tempface[x, y] = int(repixel, base=2)
             LBPoperator[:, i] = tempface.flatten().T
+            self.gradients[:, i] = self.cal_Gradient(face)
             if save == 1:
-                cv2.imwrite('F:/dissertation/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
+                cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
+            # print(tempface[0:10, 0:10])
         return LBPoperator
+
+    def cal_Gradient(self, face):
+        x64 = cv2.Sobel(face, cv2.CV_64F, 1, 0)
+        y64 = cv2.Sobel(face, cv2.CV_64F, 0, 1)
+        sobelx = uint8(absolute(x64))
+        sobely = uint8(absolute(y64))
+        res = cv2.addWeighted(sobelx, 0.5, sobely, 0.5, 0)
+        max = amax(res)
+        min = amin(res)
+        normalized = around((res - min) / (max - min), decimals=3)
+        #print(res[0:10, 0:10])
+        res = normalized.flatten().T.reshape(self.Width * self.Height, 1)
+        return res
 
     # Calculate the number of transitions in the binary pattern and judge whether it is a uniform pattern
     def transition_number(self, pattern):
@@ -171,8 +187,12 @@ class LBP_Implement(object):
             return 0
 
     # Calculate histogram for each image
-    def calHistogram(self, ImgLBPope):
+    def calHistogram(self, ImgLBPope, gradients):
+        patterns = [0, 1, 2, 3, 4, 6, 7, 8, 12, 14, 15, 16, 24, 28, 30, 31, 32, 48, 56, 60, 62, 63, 64, 96,
+                    112, 120, 124, 126, 127, 128, 129, 131, 135, 143, 159, 191, 192, 193, 195, 199, 207,
+                    223, 224, 225, 227, 231, 239, 240, 241, 243, 247, 248, 249, 251, 252, 253, 254, 255, 9]
         Img = ImgLBPope.reshape(self.Height, self.Width)  # Height: rows, Width: columns
+        gradients = gradients.reshape(self.Height, self.Width)
         mask_height, mask_width = int(self.Height / self.h_num), int(self.Width / self.w_num)
         # Divide the image into local regions
         if self.overlap_ratio > 0:
@@ -217,10 +237,19 @@ class LBP_Implement(object):
                     mask = zeros(shape(Img), uint8)
                     mask[i * mask_height: (i + 1) * mask_height, j * mask_width:(j + 1) * mask_width] = 255
                     hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
-                    # The image; the channel; the mask; the number of bins; the range of value
+                    # hist = [0.0] * 59
+                    # for c in range(i * mask_height, (i + 1) * mask_height):
+                    #     for r in range(j * mask_width, (j + 1) * mask_width):
+                    #         pattern = Img[c, r]
+                    #         for k in range(59):
+                    #             if pattern == patterns[k]:
+                    #                 #hist[k] += gradients[c, r]
+                    #                 hist[k] += 1
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
-        # print(Histogram)
+                    # plt.hist(Histogram[:,0],bins = 59)
+                    # plt.show()
+        # print(Histogram[0:8,0:8])
         return Histogram.flatten().T
 
     # recogniseImg: the image needed to be matched
@@ -229,7 +258,8 @@ class LBP_Implement(object):
     def recogniseFace(self, recogniseImg):
         recogniseImg = recogniseImg.T
         ImgLBPope = self.LBP(recogniseImg, 0)
-        recogniseHistogram = self.calHistogram(ImgLBPope)
+        ImgGradient = self.cal_Gradient(recogniseImg)
+        recogniseHistogram = self.calHistogram(ImgLBPope, ImgGradient)
         minIndex = 0
         minVals = inf
         # Find the most close one, the smallest difference
@@ -241,7 +271,7 @@ class LBP_Implement(object):
                 distance = ((array(Histogram - recogniseHistogram) ** 2).sum()) / (
                     (array(Histogram + recogniseHistogram)).sum())
             else:
-                if (self.overlap_ratio==0):
+                if (self.overlap_ratio == 0):
                     regions = self.h_num * self.w_num
                 else:
                     regions = self.region_h_num * self.region_w_num
@@ -271,7 +301,7 @@ class LBP_Implement(object):
         else:
             self.Histograms = mat(zeros((self.Patterns * self.w_num * self.h_num, shape(self.LBPoperator)[1])))
         for i in range(shape(self.LBPoperator)[1]):
-            Histogram = self.calHistogram(self.LBPoperator[:, i])
+            Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
             self.Histograms[:, i] = Histogram
 
     def calculate_Accuracy(self, mypath, character):
@@ -292,6 +322,7 @@ class LBP_Implement(object):
             return accuracy
         else:
             return 0
+
     @fn_timer
     def calculate_Weights(self, mypath, character):
         self.isweighted = 1
@@ -344,7 +375,7 @@ class LBP_Implement(object):
             temp[n] = weights[0, n]
 
         temp = temp.reshape(my_rows, my_columns)
-        #print(temp)
+        # print(temp)
         H, W = shape(temp)
         adjust = int(W / 2)
         for row in range(H):
@@ -365,7 +396,7 @@ class LBP_Implement(object):
                     temp[j] = weight_standard[t]
             start = end
         self.weight = temp
-        #print(shape(self.weight))
-        #print(self.weight[0])
+        # print(shape(self.weight))
+        # print(self.weight[0])
         weights = temp.reshape(my_rows, my_columns)
         return weights
