@@ -10,15 +10,14 @@ if __name__ == '__main__':
     w_num = 7
     h_num = 7
     overlap_ratio = 0  # from 0 to 1
-    path = '/cs/home/jf231/Dissertation/CS5099/Images/'
-    # path = 'F:/dissertation/PartImages/'
-    # hori_angle = '+000E'
-    # ver_angle = '+00'
-    # obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio)
-    # obj.run_LBP(path, hori_angle,ver_angle)
-    # char = 'P00A+000E+20.pgm'
-    # weights = obj.calculate_Weights(path,char)
-    # print(weights)
+    #path = '/cs/home/jf231/Dissertation/CS5099/Images/'
+    path = 'F:/dissertation/Images/'
+    hori_angle = '+000E'
+    ver_angle = '+00'
+    obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio)
+    obj.run_LBP(path, hori_angle,ver_angle)
+    weights = obj.calculate_Weights(path,hori_angle,'+20')
+    print(weights.reshape(7,7))
     # characters = array(['P00A+000E+00.pgm','P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm','P00A+000E+90.pgm'])
     # temp = 0.0
     # acc = 0.0
@@ -27,6 +26,7 @@ if __name__ == '__main__':
     #     print('Recognition Rate: %-10.3f'%temp)
     #     acc += temp
     # print('Final rate: %-10.3f'%(acc/6))
+    # weights = []
     horizon_angles = np.array(['+000E', '+005E', '+010E', '+015E', '+020E', '+025E'])
     vertical_angles = np.array(['+00', '+20', '-20', '-35', '+45', '+90'])
     columns = ('+00', '+20', '-20', '-35', '+45', '+90')
@@ -40,7 +40,7 @@ if __name__ == '__main__':
         acc = np.array([0.0] * length)
         obj.run_LBP(path, horizon_angles[0], vertical_angles[i])
         for j in range(length):
-            accuracy = obj.calculate_Accuracy(path,horizon_angles[0],vertical_angles[j])
+            accuracy = obj.calculate_Accuracy(path,horizon_angles[0],vertical_angles[j],weights)
             acc[j] = np.around(accuracy, decimals=3)
         print(acc)
         table_content.append(acc)

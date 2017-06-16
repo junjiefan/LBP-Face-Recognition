@@ -23,7 +23,7 @@ class LBP_Implement(object):
         self.h_num = h_num
         self.LBPoperator = 0
         self.Histograms = 0
-        self.weight = 0
+        #self.weight = 0
         self.isweighted = 0
         self.ids = [0 for i in range(self.Image_Num)]
         self.overlap_ratio = overlap_ratio
@@ -266,7 +266,7 @@ class LBP_Implement(object):
     # recogniseImg: the image needed to be matched
     # LBPoperator: LBP operators for all images
     # exHistograms: the calculated histograms for all image
-    def recogniseFace(self, recogniseImg):
+    def recogniseFace(self, recogniseImg, weights):
         recogniseImg = recogniseImg.T
         ImgLBPope = self.LBP(recogniseImg, 0)
         ImgGradient = self.cal_Gradient(recogniseImg)
@@ -291,7 +291,7 @@ class LBP_Implement(object):
                 distance = 0
                 for index in range(regions):
                     distance += (((array(Histogram[:, index] - recogniseHistogram[:, index])) ** 2).sum() / (
-                        array(Histogram[:, index] + recogniseHistogram[:, index])).sum()) * self.weight[index]
+                        array(Histogram[:, index] + recogniseHistogram[:, index])).sum()) * weights[index]
 
             if distance < minVals:
                 minIndex = i
@@ -315,7 +315,9 @@ class LBP_Implement(object):
             Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
             self.Histograms[:, i] = Histogram
 
-    def calculate_Accuracy(self, mypath, hori_angle,ver_angle):
+    def calculate_Accuracy(self, mypath, hori_angle,ver_angle, weights):
+        if(len(weights) > 1):
+            self.isweighted = 1
         j = 0
         count = 0
         for m in os.listdir(mypath):
@@ -326,7 +328,7 @@ class LBP_Implement(object):
                 if (horizon == hori_angle) and (vertical == ver_angle):
                     recogniseImg = cv2.imread(mypath + m, 0)
                     id = int(m[5:7])
-                    index = self.recogniseFace(mat(recogniseImg).flatten())
+                    index = self.recogniseFace(mat(recogniseImg).flatten(),weights)
                     if self.ids[index] == id:
                         count = count + 1
                     j = j + 1
@@ -411,6 +413,6 @@ class LBP_Implement(object):
                 if ((temp[j] <= end) and (temp[j] > start)):
                     temp[j] = weight_standard[t]
             start = end
-        self.weight = temp
-        weights = temp.reshape(my_rows, my_columns)
+        weights = temp
+        #weights = temp.reshape(my_rows, my_columns)
         return weights
