@@ -14,7 +14,7 @@ class LBP_Implement(object):
     def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio):
         self.Width = 168
         self.Height = 192
-        self.Image_Num = 38
+        self.Image_Num = 10
         self.Radius = R
         self.Points = P
         self.lbp_type = type
@@ -23,7 +23,7 @@ class LBP_Implement(object):
         self.h_num = h_num
         self.LBPoperator = 0
         self.Histograms = 0
-        #self.weight = 0
+        # self.weight = 0
         self.isweighted = 0
         self.ids = [0 for i in range(self.Image_Num)]
         self.overlap_ratio = overlap_ratio
@@ -57,7 +57,7 @@ class LBP_Implement(object):
 
     # Load all images, according to the structure of CroppedYale,
     # each folder contains several images of one person, and totally, 38 folders
-    def loadImages(self, mypath,hori_angle, ver_angle):
+    def loadImages(self, mypath, hori_angle, ver_angle):
         FaceMat = mat(zeros((self.Image_Num,
                              self.Width * self.Height)))
         j = 0
@@ -145,9 +145,10 @@ class LBP_Implement(object):
             LBPoperator[:, i] = tempface.flatten().T
             if train == 1:
                 self.gradients[:, i] = self.cal_Gradient(face)
-            #     cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
-            # print(tempface[0:10, 0:10])
+                #     cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
+                # print(tempface[0:10, 0:10])
         return LBPoperator
+
     # Utilize Sobel operator calculate image gradients.
     # THe gradient will be used as weight for each pixel
     def cal_Gradient(self, face):
@@ -213,16 +214,22 @@ class LBP_Implement(object):
 
                     if (end_x < self.Height and end_y < self.Width):
                         # mask[start_x:end_x, start_y:end_y] = 255
-                        x1 = start_x; x2 = end_x
-                        y1 = start_y; y2 = end_y
+                        x1 = start_x;
+                        x2 = end_x
+                        y1 = start_y;
+                        y2 = end_y
                     else:
                         if (end_x >= self.Height and end_y < self.Width):
-                            x1 = self.Height - mask_height - 1; y1 = start_y
-                            x2 = self.Height - 1; y2 = end_y
-                            #mask[x1:x2, start_y:end_y] = 255
+                            x1 = self.Height - mask_height - 1;
+                            y1 = start_y
+                            x2 = self.Height - 1;
+                            y2 = end_y
+                            # mask[x1:x2, start_y:end_y] = 255
                         if (end_x < self.Height and end_y >= self.Width):
-                            y1 = self.Width - mask_width - 1; x1 = start_x
-                            y2 = self.Width - 1; x2 = end_x
+                            y1 = self.Width - mask_width - 1;
+                            x1 = start_x
+                            y2 = self.Width - 1;
+                            x2 = end_x
                             mask[start_x:end_x, y1:y2] = 255
                         if (end_x >= self.Height and end_y >= self.Width):
                             x1 = self.Height - mask_height - 1
@@ -300,9 +307,9 @@ class LBP_Implement(object):
         return minIndex
 
     @fn_timer
-    def run_LBP(self, path, hori_angle,ver_angle):
+    def run_LBP(self, path, hori_angle, ver_angle):
         # Load images
-        FaceMat = self.loadImages(path, hori_angle,ver_angle).T
+        FaceMat = self.loadImages(path, hori_angle, ver_angle).T
         # Calculate LBP opearters for all loaded images
         self.LBPoperator = self.LBP(FaceMat, 1)
         # Calculate histograms
@@ -315,8 +322,76 @@ class LBP_Implement(object):
             Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
             self.Histograms[:, i] = Histogram
 
-    def calculate_Accuracy(self, mypath, hori_angle,ver_angle, weights):
-        if(len(weights) > 1):
+    def select_Features(self, mypath, hori_angle, con1, con2):
+        intra_num = self.Image_Num
+        extra_num = self.Image_Num * (self.Image_Num - 1)
+        if (self.overlap_ratio == 0):
+            my_rows = self.h_num
+            my_columns = self.w_num
+        else:
+            my_rows = self.region_h_num
+            my_columns = self.region_w_num
+        region_num = my_rows * my_columns
+        intra_distance = mat(zeros((intra_num,region_num)))
+        intra_y = array([1 for i in range(intra_num)])
+        extra_distance = mat(zeros((extra_num,region_num)))
+        extra_y = array([-1 for i in range(extra_num)])
+        extra_index = 0
+        intra_index = 0
+        # load images, intra-personal pairs and extra-personal pairs
+        for i in os.listdir(mypath):
+            str1 = i.split('_')
+            if (len(str1) == 2):
+                id1 = int(i[5:7])
+                h1 = i[12:17]
+                v1 = i[17:20]
+                if (h1 == hori_angle) and (v1 == con1):
+                    # print('The image %s' % i)
+                    img1 = cv2.imread(mypath + i, 0)
+                    lbp_op1 = self.LBP(mat(img1).flatten().T, 0)
+                    img_gra1 = self.cal_Gradient(mat(img1).flatten().T)
+                    hist1 = self.calHistogram(lbp_op1, img_gra1)
+                    hist1 = hist1.reshape(self.Patterns, region_num)
+                    # Read another image to form a pair
+                    for j in os.listdir(mypath):
+                        str2 = j.split('_')
+                        if (len(str2) == 2):
+                            id2 = int(j[5:7])
+                            h2 = j[12:17]
+                            v2 = j[17:20]
+                            if (h2 == hori_angle) and (v2 == con2):
+                                img2 = cv2.imread(mypath + j, 0)
+                                lbp_op2 = self.LBP(mat(img2).flatten().T, 0)
+                                img_gra2 = self.cal_Gradient(mat(img2).flatten().T)
+                                hist2 = self.calHistogram(lbp_op2, img_gra2)
+                                hist2 = hist2.reshape(self.Patterns, region_num)
+                                for region_index in range(region_num):
+                                    region_1 = hist1[:, region_index]
+                                    region_2 = hist2[:, region_index]
+                                    para1 = (array(region_1 - region_2) ** 2).sum()
+                                    para2 = (array(region_1 + region_2)).sum()
+                                    distance = para1 / para2
+                                    if (id1 == id2):
+                                        # two images belong to the same person
+                                        intra_distance[intra_index,region_index] = distance
+                                    else:
+                                        # two images belong to different persons
+                                        extra_distance[extra_index,region_index] = distance
+                                if (id1 == id2):
+                                    intra_index += 1
+                                else:
+                                    extra_index += 1
+        # print(intra_index)
+        # print(extra_index)
+        # print(intra_distance[0:5,0:5])
+        # print(extra_distance[0:5,0:5])
+        X = concatenate((intra_distance,extra_distance),axis=0)
+        y = concatenate((intra_y,extra_y),axis=0)
+        from FeatureSelection import feature_Select
+        fs = feature_Select(X,y)
+
+    def calculate_Accuracy(self, mypath, hori_angle, ver_angle, weights):
+        if (len(weights) > 1):
             self.isweighted = 1
         j = 0
         count = 0
@@ -328,7 +403,7 @@ class LBP_Implement(object):
                 if (horizon == hori_angle) and (vertical == ver_angle):
                     recogniseImg = cv2.imread(mypath + m, 0)
                     id = int(m[5:7])
-                    index = self.recogniseFace(mat(recogniseImg).flatten(),weights)
+                    index = self.recogniseFace(mat(recogniseImg).flatten(), weights)
                     if self.ids[index] == id:
                         count = count + 1
                     j = j + 1
@@ -337,6 +412,7 @@ class LBP_Implement(object):
             return accuracy
         else:
             return 0
+
     # This is a linear function to calculate weight for each region
     @fn_timer
     def calculate_Weights(self, mypath, hori_angle, ver_angle):
@@ -361,7 +437,7 @@ class LBP_Implement(object):
                     id = int(m[5:7])
                     imageLBP = self.LBP(mat(image).flatten().T, 0)
                     imageGradient = self.cal_Gradient(mat(image).flatten().T)
-                    histogram = self.calHistogram(imageLBP,imageGradient)
+                    histogram = self.calHistogram(imageLBP, imageGradient)
                     histogram = histogram.reshape(self.Patterns, columns)
                     temp = [0] * columns
                     for i in range(columns):
@@ -414,5 +490,5 @@ class LBP_Implement(object):
                     temp[j] = weight_standard[t]
             start = end
         weights = temp
-        #weights = temp.reshape(my_rows, my_columns)
+        # weights = temp.reshape(my_rows, my_columns)
         return weights
