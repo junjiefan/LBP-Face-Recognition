@@ -14,7 +14,7 @@ class LBP_Implement(object):
     def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio):
         self.Width = 168
         self.Height = 192
-        self.Image_Num = 10
+        self.Image_Num = 38
         self.Radius = R
         self.Points = P
         self.lbp_type = type
@@ -332,10 +332,10 @@ class LBP_Implement(object):
             my_rows = self.region_h_num
             my_columns = self.region_w_num
         region_num = my_rows * my_columns
-        intra_distance = mat(zeros((intra_num,region_num)))
+        intra_distance = mat(zeros((intra_num, region_num)))
         intra_y = array([1 for i in range(intra_num)])
-        extra_distance = mat(zeros((extra_num,region_num)))
-        extra_y = array([-1 for i in range(extra_num)])
+        extra_distance = mat(zeros((extra_num, region_num)))
+        extra_y = array([0 for i in range(extra_num)])
         extra_index = 0
         intra_index = 0
         # load images, intra-personal pairs and extra-personal pairs
@@ -373,10 +373,10 @@ class LBP_Implement(object):
                                     distance = para1 / para2
                                     if (id1 == id2):
                                         # two images belong to the same person
-                                        intra_distance[intra_index,region_index] = distance
+                                        intra_distance[intra_index, region_index] = distance
                                     else:
                                         # two images belong to different persons
-                                        extra_distance[extra_index,region_index] = distance
+                                        extra_distance[extra_index, region_index] = distance
                                 if (id1 == id2):
                                     intra_index += 1
                                 else:
@@ -385,10 +385,11 @@ class LBP_Implement(object):
         # print(extra_index)
         # print(intra_distance[0:5,0:5])
         # print(extra_distance[0:5,0:5])
-        X = concatenate((intra_distance,extra_distance),axis=0)
-        y = concatenate((intra_y,extra_y),axis=0)
+
+        # X = concatenate((intra_distance,extra_distance),axis=0)
+        # y = concatenate((intra_y,extra_y),axis=0)
         from FeatureSelection import feature_Select
-        fs = feature_Select(X,y)
+        fs = feature_Select(intra_distance, extra_distance, intra_y, extra_y)
 
     def calculate_Accuracy(self, mypath, hori_angle, ver_angle, weights):
         if (len(weights) > 1):
