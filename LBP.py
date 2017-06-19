@@ -11,8 +11,8 @@ if __name__ == '__main__':
     w_num = 7
     h_num = 7
     overlap_ratio = 0  # from 0 to 1
-    path = '/cs/home/jf231/Dissertation/CS5099/Images/'
-    # path = 'F:/dissertation/Images/'
+    # path = '/cs/home/jf231/Dissertation/CS5099/Images/'
+    path = 'F:/dissertation/Images/'
     hori_angle = '+000E'
     ver_angle = '+00'
     conditions = ['+00', '+20', '-20']
