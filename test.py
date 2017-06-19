@@ -1,17 +1,38 @@
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
+import pandas as pd
+from sklearn import datasets
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
 
-# x = [[0]*2 for i in range(5)]
-# x[0][0] = 7
-# y = [[1]*2 for i in range(3)]
-# r = np.concatenate((x,y),axis=0)
-# print(r)
+region_type = np.dtype({
+    'names': ['region_height', 'region_width'],
+    'formats': ['i', 'i']
+})
+sub_regions = np.array([(24, 21), (24, 24), (27, 24)], dtype=region_type)
 
-intra_y = np.array([1 for i in range(5)])
-extra_y = np.array([-1 for i in range(15)])
-y = np.concatenate((intra_y,extra_y))
-print(y)
+
+# boost = AdaBoostClassifier(base_estimator=DecisionTreeClassifier())
+# parameters = {'n_estimators': (10, 12, 15, 17, 20),
+#               'base_estimator__max_depth': (1, 2, 3),
+#               'learning_rate': (0.6, 0.7, 0.8, 0.9),
+#               'algorithm': ('SAMME', 'SAMME.R')}
+# clf = GridSearchCV(boost, parameters)
+# clf.fit(iris.data, iris.target)
+# print(clf.best_params_)
+# print(clf.best_estimator_)
+#
+# boost = RandomForestClassifier()
+# parameters = {'n_estimators': (10, 12, 15, 17, 20)}
+# clf = GridSearchCV(boost, parameters)
+# clf.fit(iris.data, iris.target)
+# print(clf.best_params_)
+# print(clf.best_estimator_)
+
 ####################################################################################################################
 # Choose the overlapping size
 # characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
