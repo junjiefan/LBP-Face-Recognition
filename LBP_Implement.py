@@ -4,7 +4,6 @@ from numpy import *
 import cv2
 import time
 from functools import wraps
-import matplotlib.pyplot as plt
 
 
 class LBP_Implement(object):
@@ -28,6 +27,7 @@ class LBP_Implement(object):
         self.ids = 0
         self.overlap_ratio = overlap_ratio
         self.gradients = 0
+        self.gamma = 0.5
         if (self.overlap_ratio > 0):
             region_width = self.Width / self.w_num
             region_height = self.Height / self.h_num
@@ -68,10 +68,16 @@ class LBP_Implement(object):
                     self.ids[j] = int(m[5:7])
                 except:
                     print('Load %s failed' % m)
+                # img = self.gamma_correction(img, self.gamma)
                 FaceMat[j, :] = mat(img).flatten()
                 j = j + 1
         print('Successfully loaded %s images' % j)
         return FaceMat  # Rotate the binary string and obtain a minimal binary number for each pattern
+
+    def gamma_correction(self, img, correction):
+        img = img / 255.0
+        img = cv2.pow(img, correction)
+        return uint8(img * 255)
 
     # Start from the end of the binary string, remove all '0' at the end and place them in the begining.
     def minBinary(self, pixel):
@@ -348,6 +354,7 @@ class LBP_Implement(object):
                     if (h1 == hori_angle) and (v1 == cons[con_index]):
                         # print('The image %s' % i)
                         img1 = cv2.imread(mypath + i, 0)
+                        # img1 = self.gamma_correction(img1, self.gamma)
                         lbp_op1 = self.LBP(mat(img1).flatten().T, 0)
                         img_gra1 = self.cal_Gradient(mat(img1).flatten().T)
                         hist1 = self.calHistogram(lbp_op1, img_gra1)
@@ -360,6 +367,7 @@ class LBP_Implement(object):
                                 v2 = j[17:20]
                                 if (h2 == hori_angle) and (v2 == cons[(con_index + 1) % con_num]):
                                     img2 = cv2.imread(mypath + j, 0)
+                                    # img2 = self.gamma_correction(img2, self.gamma)
                                     lbp_op2 = self.LBP(mat(img2).flatten().T, 0)
                                     img_gra2 = self.cal_Gradient(mat(img2).flatten().T)
                                     hist2 = self.calHistogram(lbp_op2, img_gra2)
@@ -404,6 +412,7 @@ class LBP_Implement(object):
         for m in os.listdir(mypath):
             if (len(m) == 24):
                 recogniseImg = cv2.imread(mypath + m, 0)
+                # recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
                 id = int(m[5:7])
                 index = self.recogniseFace(mat(recogniseImg).flatten(), weights)
                 if self.ids[index] == id:
@@ -418,6 +427,8 @@ class LBP_Implement(object):
     # This is a linear function to calculate weight for each region
     @fn_timer
     def calculate_Weights(self, mypath):
+        image_num = len([file for file in os.listdir(mypath)
+                         if os.path.isfile(os.path.join(mypath, file))])
         self.isweighted = 1
         if (self.overlap_ratio == 0):
             my_rows = self.h_num
@@ -426,12 +437,13 @@ class LBP_Implement(object):
             my_rows = self.region_h_num
             my_columns = self.region_w_num
 
-        weights = mat(zeros((self.Image_Num, my_rows * my_columns)))
+        weights = mat(zeros((image_num, my_rows * my_columns)))
         rows, columns = shape(weights)
         count = 0
         for m in os.listdir(mypath):
             if (len(m) == 24):
                 image = cv2.imread(mypath + m, 0)
+                # imgage = self.gamma_correction(imgage, self.gamma)
                 id = int(m[5:7])
                 imageLBP = self.LBP(mat(image).flatten().T, 0)
                 imageGradient = self.cal_Gradient(mat(image).flatten().T)
