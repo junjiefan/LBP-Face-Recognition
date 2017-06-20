@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from FeatureSelection import feature_Select
+
 if __name__ == '__main__':
     R = 1
     P = 8
@@ -12,36 +13,52 @@ if __name__ == '__main__':
     h_num = 7
     overlap_ratio = 0  # from 0 to 1
     # path = '/cs/home/jf231/Dissertation/CS5099/Images/'
-    path = 'F:/dissertation/Images/'
-    hori_angle = '+000E'
-    ver_angle = '+00'
-    conditions = ['+00', '+20', '-20']
-    intra = pd.read_csv('intra.csv')
-    extra = pd.read_csv('extra.csv')
-    intra = np.array(intra)
-    extra = np.array(extra)
-    x1 = intra[:,0:49]
-    y1 = intra[:,49]
-    x2 = extra[:,0:49]
-    y2 = extra[:,49]
+    # path = 'F:/dissertation/Images/'
+    paths = ['/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_1/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_2/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_4/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_6/']
+    # hori_angle = '+000E'
+    # ver_angle = '+00'
+    # conditions = ['+00', '+20', '-20']
+    # intra = pd.read_csv('intra.csv')
+    # extra = pd.read_csv('extra.csv')
+    # intra = np.array(intra)
+    # extra = np.array(extra)
+    # x1 = intra[:, 0:49]
+    # y1 = intra[:, 49]
+    # x2 = extra[:, 0:49]
+    # y2 = extra[:, 49]
     obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio)
-    # feature_importance = obj.select_Features(path, hori_angle, conditions)
-    feature_importance = feature_Select(x1,x2,y1,y2)
-    # obj.run_LBP(path, hori_angle,ver_angle)
-    # weights = obj.calculate_Weights(path,hori_angle,'+20')
-    # print(weights.reshape(7,7))
-    horizon_angles = np.array(['+000E', '+005E', '+010E', '+015E', '+020E', '+025E'])
-    vertical_angles = np.array(['+00', '+20', '-20', '-35', '+45', '+90'])
-    temp = 0.0
-    acc = 0.0
-    weights = []
-    weights = feature_importance
-    obj.run_LBP(path, horizon_angles[0], vertical_angles[0])
-    for char in vertical_angles:
-        temp = obj.calculate_Accuracy(path, horizon_angles[0], char, weights)
+    obj.run_LBP(paths[1])
+    weights=[]
+    weights = obj.calculate_Weights(paths[0])
+    print(weights.reshape(7,7))
+    for path in paths:
+        temp = obj.calculate_Accuracy(path,weights)
         print('Recognition Rate: %-10.3f' % temp)
-        acc += temp
-    print('Final rate: %-10.3f' % (acc / 6))
+
+    # feature_importance = obj.select_Features(path, hori_angle, conditions)
+    # feature_importance = feature_Select(x1, x2, y1, y2)
+    # print(feature_importance.reshape(7, 7))
+    # obj.run_LBP(path, hori_angle, ver_angle)
+    # weights = obj.calculate_Weights(path,hori_angle,'-20')
+    # print(weights.reshape(7, 7))
+    # horizon_angles = np.array(['+000E', '+005E', '+010E', '+015E', '+020E', '+025E', '+035E'])
+    # vertical_angles = np.array(['+00', '+20', '-20', '-35', '+45', '+90'])
+    # vertical_angles = np.array(['-35', '+45', '+90'])
+    # vertical_angles = np.array(['-20', '+15', '+40', '+65'])
+    # temp = 0.0
+    # acc = 0.0
+    # weights = []
+    # weights = feature_importance
+    # for char in vertical_angles:
+    #     temp = obj.calculate_Accuracy(path, horizon_angles[0], char, weights)
+    #     print('Recognition Rate: %-10.3f' % temp)
+    #     acc += temp
+    # print('Final rate: %-10.3f' % (acc / len(vertical_angles)))
     ####################################################################################################################
     # weights = []
     # horizon_angles = np.array(['+000E', '+005E', '+010E', '+015E', '+020E', '+025E'])

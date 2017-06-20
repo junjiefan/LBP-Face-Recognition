@@ -14,7 +14,7 @@ class LBP_Implement(object):
     def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio):
         self.Width = 168
         self.Height = 192
-        self.Image_Num = 38
+        self.Image_Num = 0
         self.Radius = R
         self.Points = P
         self.lbp_type = type
@@ -25,9 +25,9 @@ class LBP_Implement(object):
         self.Histograms = 0
         # self.weight = 0
         self.isweighted = 0
-        self.ids = [0 for i in range(self.Image_Num)]
+        self.ids = 0
         self.overlap_ratio = overlap_ratio
-        self.gradients = mat(zeros((self.Width * self.Height, self.Image_Num)))
+        self.gradients = 0
         if (self.overlap_ratio > 0):
             region_width = self.Width / self.w_num
             region_height = self.Height / self.h_num
@@ -57,27 +57,19 @@ class LBP_Implement(object):
 
     # Load all images, according to the structure of CroppedYale,
     # each folder contains several images of one person, and totally, 38 folders
-    def loadImages(self, mypath, hori_angle, ver_angle):
+    def loadImages(self, mypath):
         FaceMat = mat(zeros((self.Image_Num,
                              self.Width * self.Height)))
         j = 0
-        # for m in os.listdir(mypath):
-        #     for n in os.listdir(os.path.join(mypath, m)):
-        #         if (len(n.split('_')) == 2):
-        #             if n.split('_')[1] == character:
         for m in os.listdir(mypath):
-            str = m.split('_')
-            if (len(str) == 2):
-                horizon = m[12:17]
-                vertical = m[17:20]
-                if (horizon == hori_angle) and (vertical == ver_angle):
-                    try:
-                        img = cv2.imread(mypath + m, 0)
-                        self.ids[j] = int(m[5:7])
-                    except:
-                        print('Load %s failed' % m)
-                    FaceMat[j, :] = mat(img).flatten()
-                    j = j + 1
+            if (len(m) == 24):
+                try:
+                    img = cv2.imread(mypath + m, 0)
+                    self.ids[j] = int(m[5:7])
+                except:
+                    print('Load %s failed' % m)
+                FaceMat[j, :] = mat(img).flatten()
+                j = j + 1
         print('Successfully loaded %s images' % j)
         return FaceMat  # Rotate the binary string and obtain a minimal binary number for each pattern
 
@@ -307,9 +299,13 @@ class LBP_Implement(object):
         return minIndex
 
     @fn_timer
-    def run_LBP(self, path, hori_angle, ver_angle):
+    def run_LBP(self, path):
+        self.Image_Num = len([file for file in os.listdir(path)
+                              if os.path.isfile(os.path.join(path, file))])
+        self.ids = [0 for i in range(self.Image_Num)]
+        self.gradients = mat(zeros((self.Width * self.Height, self.Image_Num)))
         # Load images
-        FaceMat = self.loadImages(path, hori_angle, ver_angle).T
+        FaceMat = self.loadImages(path).T
         # Calculate LBP opearters for all loaded images
         self.LBPoperator = self.LBP(FaceMat, 1)
         # Calculate histograms
@@ -322,9 +318,13 @@ class LBP_Implement(object):
             Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
             self.Histograms[:, i] = Histogram
 
-    def select_Features(self, mypath, hori_angle, con1, con2):
-        intra_num = self.Image_Num
-        extra_num = self.Image_Num * (self.Image_Num - 1)
+    def select_Features(self, mypath, hori_angle, cons, subject_num):
+        con_num = len(cons)
+        print(con_num)
+        intra_num = int((subject_num * con_num * (con_num - 1)) / 2)
+        extra_num = int((subject_num * (subject_num - 1) * con_num))
+        print('intra %d' % intra_num)
+        print('extra %d' % extra_num)
         if (self.overlap_ratio == 0):
             my_rows = self.h_num
             my_columns = self.w_num
@@ -339,75 +339,76 @@ class LBP_Implement(object):
         extra_index = 0
         intra_index = 0
         # load images, intra-personal pairs and extra-personal pairs
-        for i in os.listdir(mypath):
-            str1 = i.split('_')
-            if (len(str1) == 2):
-                id1 = int(i[5:7])
-                h1 = i[12:17]
-                v1 = i[17:20]
-                if (h1 == hori_angle) and (v1 == con1):
-                    # print('The image %s' % i)
-                    img1 = cv2.imread(mypath + i, 0)
-                    lbp_op1 = self.LBP(mat(img1).flatten().T, 0)
-                    img_gra1 = self.cal_Gradient(mat(img1).flatten().T)
-                    hist1 = self.calHistogram(lbp_op1, img_gra1)
-                    hist1 = hist1.reshape(self.Patterns, region_num)
-                    # Read another image to form a pair
-                    for j in os.listdir(mypath):
-                        str2 = j.split('_')
-                        if (len(str2) == 2):
-                            id2 = int(j[5:7])
-                            h2 = j[12:17]
-                            v2 = j[17:20]
-                            if (h2 == hori_angle) and (v2 == con2):
-                                img2 = cv2.imread(mypath + j, 0)
-                                lbp_op2 = self.LBP(mat(img2).flatten().T, 0)
-                                img_gra2 = self.cal_Gradient(mat(img2).flatten().T)
-                                hist2 = self.calHistogram(lbp_op2, img_gra2)
-                                hist2 = hist2.reshape(self.Patterns, region_num)
-                                for region_index in range(region_num):
-                                    region_1 = hist1[:, region_index]
-                                    region_2 = hist2[:, region_index]
-                                    para1 = (array(region_1 - region_2) ** 2).sum()
-                                    para2 = (array(region_1 + region_2)).sum()
-                                    distance = para1 / para2
+        for con_index in range(con_num):
+            for i in os.listdir(mypath):
+                if (len(i) == 24):
+                    id1 = int(i[5:7])
+                    h1 = i[12:17]
+                    v1 = i[17:20]
+                    if (h1 == hori_angle) and (v1 == cons[con_index]):
+                        # print('The image %s' % i)
+                        img1 = cv2.imread(mypath + i, 0)
+                        lbp_op1 = self.LBP(mat(img1).flatten().T, 0)
+                        img_gra1 = self.cal_Gradient(mat(img1).flatten().T)
+                        hist1 = self.calHistogram(lbp_op1, img_gra1)
+                        hist1 = hist1.reshape(self.Patterns, region_num)
+                        # Read another image to form a pair
+                        for j in os.listdir(mypath):
+                            if (len(j) == 24):
+                                id2 = int(j[5:7])
+                                h2 = j[12:17]
+                                v2 = j[17:20]
+                                if (h2 == hori_angle) and (v2 == cons[(con_index + 1) % con_num]):
+                                    img2 = cv2.imread(mypath + j, 0)
+                                    lbp_op2 = self.LBP(mat(img2).flatten().T, 0)
+                                    img_gra2 = self.cal_Gradient(mat(img2).flatten().T)
+                                    hist2 = self.calHistogram(lbp_op2, img_gra2)
+                                    hist2 = hist2.reshape(self.Patterns, region_num)
+                                    for region_index in range(region_num):
+                                        region_1 = hist1[:, region_index]
+                                        region_2 = hist2[:, region_index]
+                                        para1 = (array(region_1 - region_2) ** 2).sum()
+                                        para2 = (array(region_1 + region_2)).sum()
+                                        distance = para1 / para2
+                                        if (id1 == id2):
+                                            # two images belong to the same person
+                                            intra_distance[intra_index, region_index] = distance
+                                        else:
+                                            # two images belong to different persons
+                                            extra_distance[extra_index, region_index] = distance
                                     if (id1 == id2):
-                                        # two images belong to the same person
-                                        intra_distance[intra_index, region_index] = distance
+                                        intra_index += 1
                                     else:
-                                        # two images belong to different persons
-                                        extra_distance[extra_index, region_index] = distance
-                                if (id1 == id2):
-                                    intra_index += 1
-                                else:
-                                    extra_index += 1
-        # print(intra_index)
-        # print(extra_index)
+                                        extra_index += 1
+        print(intra_index)
+        print(extra_index)
         # print(intra_distance[0:5,0:5])
         # print(extra_distance[0:5,0:5])
 
-        # X = concatenate((intra_distance,extra_distance),axis=0)
-        # y = concatenate((intra_y,extra_y),axis=0)
+        intra = concatenate((intra_distance, intra_y.reshape(shape(intra_y)[0], 1)), axis=1)
+        extra = concatenate((extra_distance, extra_y.reshape(shape(extra_y)[0], 1)), axis=1)
+        import pandas as pd
+        intra = pd.DataFrame(intra)
+        intra.to_csv('intra.csv', sep=',', index=False)
+        extra = pd.DataFrame(extra)
+        extra.to_csv('extra.csv', sep=',', index=False)
         from FeatureSelection import feature_Select
         fs = feature_Select(intra_distance, extra_distance, intra_y, extra_y)
+        return fs
 
-    def calculate_Accuracy(self, mypath, hori_angle, ver_angle, weights):
+    def calculate_Accuracy(self, mypath, weights):
         if (len(weights) > 1):
             self.isweighted = 1
         j = 0
         count = 0
         for m in os.listdir(mypath):
-            str = m.split('_')
-            if (len(str) == 2):
-                horizon = m[12:17]
-                vertical = m[17:20]
-                if (horizon == hori_angle) and (vertical == ver_angle):
-                    recogniseImg = cv2.imread(mypath + m, 0)
-                    id = int(m[5:7])
-                    index = self.recogniseFace(mat(recogniseImg).flatten(), weights)
-                    if self.ids[index] == id:
-                        count = count + 1
-                    j = j + 1
+            if (len(m) == 24):
+                recogniseImg = cv2.imread(mypath + m, 0)
+                id = int(m[5:7])
+                index = self.recogniseFace(mat(recogniseImg).flatten(), weights)
+                if self.ids[index] == id:
+                    count = count + 1
+                j = j + 1
         if j > 0:
             accuracy = float(count) / j
             return accuracy
@@ -416,7 +417,7 @@ class LBP_Implement(object):
 
     # This is a linear function to calculate weight for each region
     @fn_timer
-    def calculate_Weights(self, mypath, hori_angle, ver_angle):
+    def calculate_Weights(self, mypath):
         self.isweighted = 1
         if (self.overlap_ratio == 0):
             my_rows = self.h_num
@@ -429,40 +430,36 @@ class LBP_Implement(object):
         rows, columns = shape(weights)
         count = 0
         for m in os.listdir(mypath):
-            str = m.split('_')
-            if (len(str) == 2):
-                horizon = m[12:17]
-                vertical = m[17:20]
-                if (horizon == hori_angle) and (vertical == ver_angle):
-                    image = cv2.imread(mypath + m, 0)
-                    id = int(m[5:7])
-                    imageLBP = self.LBP(mat(image).flatten().T, 0)
-                    imageGradient = self.cal_Gradient(mat(image).flatten().T)
-                    histogram = self.calHistogram(imageLBP, imageGradient)
-                    histogram = histogram.reshape(self.Patterns, columns)
-                    temp = [0] * columns
-                    for i in range(columns):
-                        # calculate the recognition rate for each region
-                        local_region = histogram[:, i]
-                        min_index = 0
-                        min_value = inf
-                        for j in range(self.Image_Num):
-                            stored_hist = self.Histograms[:, j]
-                            stored_hist = stored_hist.reshape(self.Patterns, columns)
-                            stored_region = stored_hist[:, i]
-                            para1 = (array(local_region - stored_region) ** 2).sum()
-                            para2 = (array(local_region + stored_region)).sum()
-                            distance = para1 / para2
-                            if (distance < min_value):
-                                min_index = j
-                                min_value = distance
-                        match_id = self.ids[min_index]
-                        if (id == match_id):
-                            temp[i] = 1
-                        else:
-                            temp[i] = 0
-                    weights[count, :] = temp
-                    count += 1
+            if (len(m) == 24):
+                image = cv2.imread(mypath + m, 0)
+                id = int(m[5:7])
+                imageLBP = self.LBP(mat(image).flatten().T, 0)
+                imageGradient = self.cal_Gradient(mat(image).flatten().T)
+                histogram = self.calHistogram(imageLBP, imageGradient)
+                histogram = histogram.reshape(self.Patterns, columns)
+                temp = [0] * columns
+                for i in range(columns):
+                    # calculate the recognition rate for each region
+                    local_region = histogram[:, i]
+                    min_index = 0
+                    min_value = inf
+                    for j in range(self.Image_Num):
+                        stored_hist = self.Histograms[:, j]
+                        stored_hist = stored_hist.reshape(self.Patterns, columns)
+                        stored_region = stored_hist[:, i]
+                        para1 = (array(local_region - stored_region) ** 2).sum()
+                        para2 = (array(local_region + stored_region)).sum()
+                        distance = para1 / para2
+                        if (distance < min_value):
+                            min_index = j
+                            min_value = distance
+                    match_id = self.ids[min_index]
+                    if (id == match_id):
+                        temp[i] = 1
+                    else:
+                        temp[i] = 0
+                weights[count, :] = temp
+                count += 1
 
         weights = weights.mean(axis=0)
         temp = array([0.0] * columns)

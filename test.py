@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import cv2
+import os
 import numpy as np
 import pandas as pd
 from sklearn import datasets
@@ -9,11 +10,47 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 
-region_type = np.dtype({
-    'names': ['region_height', 'region_width'],
-    'formats': ['i', 'i']
-})
-sub_regions = np.array([(24, 21), (24, 24), (27, 24)], dtype=region_type)
+# path = '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_2/'
+# file_num = len([file for file in os.listdir(path)
+#                 if os.path.isfile(os.path.join(path,file))])
+# print(file_num)
+path = '/cs/home/jf231/Dissertation/CS5099/PartImages/'
+destinations = ['/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_1/',
+                '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_2/',
+                '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/',
+                '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_4/',
+                '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/',
+                '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_6/']
+for m in os.listdir(path):
+    if (len(m) == 24):
+        horizon = int(m[13:16])
+        vertical = int(m[18:20])
+        angle = horizon * 0.5 + vertical * 0.5
+        img = cv2.imread(path + m, 0)
+        if angle <= 10:
+            cv2.imwrite(destinations[0] + m, img)
+        elif angle <= 20:
+            cv2.imwrite(destinations[1] + m, img)
+        elif angle <= 35:
+            cv2.imwrite(destinations[2] + m, img)
+        elif angle <= 45 and horizon < 90 and vertical < 90:
+            cv2.imwrite(destinations[3] + m, img)
+        elif angle <= 75 and horizon < 110 and vertical < 90:
+            cv2.imwrite(destinations[4] + m, img)
+        else:
+            cv2.imwrite(destinations[5] + m, img)
+
+# str = 'yaleB01_P00A-010E+00.pgm'
+# print(int(str[5:7]))
+# print(int(str[13:16]))
+# print(int(str[18:20]))
+# str = '0005'
+# print(int(str))
+# region_type = np.dtype({
+#     'names': ['region_height', 'region_width'],
+#     'formats': ['i', 'i']
+# })
+# sub_regions = np.array([(24, 21), (24, 24), (27, 24)], dtype=region_type)
 
 
 # boost = AdaBoostClassifier(base_estimator=DecisionTreeClassifier())
