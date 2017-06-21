@@ -66,11 +66,14 @@ class LBP_Implement(object):
                 try:
                     img = cv2.imread(mypath + m, 0)
                     self.ids[j] = int(m[5:7])
+                    self.gradients[:, j] = self.cal_Gradient(mat(img))
+                    img = self.gamma_correction(img, self.gamma)
+                    # img = cv2.GaussianBlur(img, (3, 3), 0)
+                    img = cv2.equalizeHist(img)
+                    FaceMat[j, :] = mat(img).flatten()
+                    j = j + 1
                 except:
                     print('Load %s failed' % m)
-                # img = self.gamma_correction(img, self.gamma)
-                FaceMat[j, :] = mat(img).flatten()
-                j = j + 1
         print('Successfully loaded %s images' % j)
         return FaceMat  # Rotate the binary string and obtain a minimal binary number for each pattern
 
@@ -141,8 +144,8 @@ class LBP_Implement(object):
                     else:
                         tempface[x, y] = int(repixel, base=2)
             LBPoperator[:, i] = tempface.flatten().T
-            if train == 1:
-                self.gradients[:, i] = self.cal_Gradient(face)
+            # if train == 1:
+                # self.gradients[:, i] = self.cal_Gradient(face)
                 #     cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
                 # print(tempface[0:10, 0:10])
         return LBPoperator
@@ -271,10 +274,9 @@ class LBP_Implement(object):
     # recogniseImg: the image needed to be matched
     # LBPoperator: LBP operators for all images
     # exHistograms: the calculated histograms for all image
-    def recogniseFace(self, recogniseImg, weights):
+    def recogniseFace(self, recogniseImg, weights,ImgGradient):
         recogniseImg = recogniseImg.T
         ImgLBPope = self.LBP(recogniseImg, 0)
-        ImgGradient = self.cal_Gradient(recogniseImg)
         recogniseHistogram = self.calHistogram(ImgLBPope, ImgGradient)
         minIndex = 0
         minVals = inf
@@ -323,6 +325,29 @@ class LBP_Implement(object):
         for i in range(shape(self.LBPoperator)[1]):
             Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
             self.Histograms[:, i] = Histogram
+
+    def calculate_Accuracy(self, mypath, weights):
+        if (len(weights) > 1):
+            self.isweighted = 1
+        j = 0
+        count = 0
+        for m in os.listdir(mypath):
+            if (len(m) == 24):
+                recogniseImg = cv2.imread(mypath + m, 0)
+                ImgGradient = self.cal_Gradient(mat(recogniseImg))
+                recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
+                # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
+                recogniseImg = cv2.equalizeHist(recogniseImg)
+                id = int(m[5:7])
+                index = self.recogniseFace(mat(recogniseImg).flatten(), weights,ImgGradient)
+                if self.ids[index] == id:
+                    count = count + 1
+                j = j + 1
+        if j > 0:
+            accuracy = float(count) / j
+            return accuracy
+        else:
+            return 0
 
     def select_Features(self, mypath, hori_angle, cons, subject_num):
         con_num = len(cons)
@@ -403,26 +428,6 @@ class LBP_Implement(object):
         from FeatureSelection import feature_Select
         fs = feature_Select(intra_distance, extra_distance, intra_y, extra_y)
         return fs
-
-    def calculate_Accuracy(self, mypath, weights):
-        if (len(weights) > 1):
-            self.isweighted = 1
-        j = 0
-        count = 0
-        for m in os.listdir(mypath):
-            if (len(m) == 24):
-                recogniseImg = cv2.imread(mypath + m, 0)
-                # recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
-                id = int(m[5:7])
-                index = self.recogniseFace(mat(recogniseImg).flatten(), weights)
-                if self.ids[index] == id:
-                    count = count + 1
-                j = j + 1
-        if j > 0:
-            accuracy = float(count) / j
-            return accuracy
-        else:
-            return 0
 
     # This is a linear function to calculate weight for each region
     @fn_timer

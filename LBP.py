@@ -14,18 +14,18 @@ if __name__ == '__main__':
     overlap_ratio = 0  # from 0 to 1
     # path = '/cs/home/jf231/Dissertation/CS5099/Images/'
     # path = 'F:/dissertation/Images/'
-    paths = ['F:/dissertation/Yale_images/Set_1/',
-             'F:/dissertation/Yale_images/Set_2/',
-             'F:/dissertation/Yale_images/Set_3/',
-             'F:/dissertation/Yale_images/Set_4/',
-             'F:/dissertation/Yale_images/Set_5/',
-             'F:/dissertation/Yale_images/Set_6/']
-    # paths = ['/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_1/',
-    #          '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_2/',
-    #          '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/',
-    #          '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_4/',
-    #          '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/',
-    #          '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_6/']
+    # paths = ['F:/dissertation/Yale_images/Set_1/',
+    #          'F:/dissertation/Yale_images/Set_2/',
+    #          'F:/dissertation/Yale_images/Set_3/',
+    #          'F:/dissertation/Yale_images/Set_4/',
+    #          'F:/dissertation/Yale_images/Set_5/',
+    #          'F:/dissertation/Yale_images/Set_6/']
+    paths = ['/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_1/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_2/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_4/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/',
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_6/']
     # hori_angle = '+000E'
     # ver_angle = '+00'
     # conditions = ['+00', '+20', '-20']
@@ -42,8 +42,8 @@ if __name__ == '__main__':
     weights = []
     # weights = obj.calculate_Weights(paths[1])
     # print(weights.reshape(7, 7))
-    for path in paths:
-        temp = obj.calculate_Accuracy(path, weights)
+    for i in range(1, 6):
+        temp = obj.calculate_Accuracy(paths[i], weights)
         print('Recognition Rate: %-10.3f' % temp)
 
         # feature_importance = obj.select_Features(path, hori_angle, conditions)
