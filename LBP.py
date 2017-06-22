@@ -24,8 +24,7 @@ if __name__ == '__main__':
              '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_2/',
              '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/',
              '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_4/',
-             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/',
-             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_6/']
+             '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/']
     # hori_angle = '+000E'
     # ver_angle = '+00'
     # conditions = ['+00', '+20', '-20']
@@ -42,7 +41,7 @@ if __name__ == '__main__':
     weights = []
     # weights = obj.calculate_Weights(paths[1])
     # print(weights.reshape(7, 7))
-    for i in range(1, 6):
+    for i in range(1, 5):
         temp = obj.calculate_Accuracy(paths[i], weights)
         print('Recognition Rate: %-10.3f' % temp)
 

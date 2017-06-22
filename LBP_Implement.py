@@ -27,7 +27,7 @@ class LBP_Implement(object):
         self.ids = 0
         self.overlap_ratio = overlap_ratio
         self.gradients = 0
-        self.gamma = 0.5
+        self.gamma = 0.15
         if (self.overlap_ratio > 0):
             region_width = self.Width / self.w_num
             region_height = self.Height / self.h_num
@@ -67,9 +67,9 @@ class LBP_Implement(object):
                     img = cv2.imread(mypath + m, 0)
                     self.ids[j] = int(m[5:7])
                     self.gradients[:, j] = self.cal_Gradient(mat(img))
-                    img = self.gamma_correction(img, self.gamma)
+                    # img = self.gamma_correction(img, self.gamma)
                     # img = cv2.GaussianBlur(img, (3, 3), 0)
-                    img = cv2.equalizeHist(img)
+                    # img = cv2.equalizeHist(img)
                     FaceMat[j, :] = mat(img).flatten()
                     j = j + 1
                 except:
@@ -145,9 +145,9 @@ class LBP_Implement(object):
                         tempface[x, y] = int(repixel, base=2)
             LBPoperator[:, i] = tempface.flatten().T
             # if train == 1:
-                # self.gradients[:, i] = self.cal_Gradient(face)
-                #     cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
-                # print(tempface[0:10, 0:10])
+            # self.gradients[:, i] = self.cal_Gradient(face)
+            #     cv2.imwrite('/cs/home/jf231/Dissertation/CS5099/LBP_Images/' + str(i) + '.jpg', array(tempface, uint8))
+            # print(tempface[0:10, 0:10])
         return LBPoperator
 
     # Utilize Sobel operator calculate image gradients.
@@ -160,7 +160,7 @@ class LBP_Implement(object):
         res = cv2.addWeighted(sobelx, 0.5, sobely, 0.5, 0)
         max = amax(res)
         min = amin(res)
-        normalized = around((res - min) / (max - min), decimals=3)
+        normalized = around((res - min) / (max - min), decimals=4)
         # print(res[0:10, 0:10])
         res = normalized.flatten().T.reshape(self.Width * self.Height, 1)
         return res
@@ -239,11 +239,11 @@ class LBP_Implement(object):
                             y2 = self.Width - 1
                             # mask[x1:x2, y1:y2] = 255
                     # hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
-                    hist = [0.0] * 59
+                    hist = [0.0] * self.Patterns
                     for c in range(x1, x2):
                         for r in range(y1, y2):
                             pattern = Img[c, r]
-                            for k in range(59):
+                            for k in range(self.Patterns):
                                 if pattern == patterns[k]:
                                     hist[k] += gradients[c, r]
                                     # hist[k] += 1
@@ -256,25 +256,26 @@ class LBP_Implement(object):
             count = 0
             for i in range(self.h_num):
                 for j in range(self.w_num):
-                    hist = [0.0] * 59
+                    hist = [0.0] * self.Patterns
                     for c in range(i * mask_height, (i + 1) * mask_height):
                         for r in range(j * mask_width, (j + 1) * mask_width):
                             pattern = Img[c, r]
-                            for k in range(59):
+                            for k in range(self.Patterns):
                                 if pattern == patterns[k]:
-                                    hist[k] += gradients[c, r]
+                                    # hist[k] += gradients[c, r]
+                                    # hist[k] += math.log((gradients[c, r] + 1), math.e)
+                                    hist[k] += math.exp(gradients[c, r]) - 1
                                     # hist[k] += 1
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
-                    # plt.hist(Histogram[:,0],bins = 59)
-                    # plt.show()
-        # print(Histogram[0:8,0:8])
+        # from sklearn.preprocessing import normalize
+        # Histogram = mat(normalize(Histogram,norm='l1',axis=0))
         return Histogram.flatten().T
 
     # recogniseImg: the image needed to be matched
     # LBPoperator: LBP operators for all images
     # exHistograms: the calculated histograms for all image
-    def recogniseFace(self, recogniseImg, weights,ImgGradient):
+    def recogniseFace(self, recogniseImg, weights, ImgGradient):
         recogniseImg = recogniseImg.T
         ImgLBPope = self.LBP(recogniseImg, 0)
         recogniseHistogram = self.calHistogram(ImgLBPope, ImgGradient)
@@ -335,11 +336,11 @@ class LBP_Implement(object):
             if (len(m) == 24):
                 recogniseImg = cv2.imread(mypath + m, 0)
                 ImgGradient = self.cal_Gradient(mat(recogniseImg))
-                recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
+                # recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
                 # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
-                recogniseImg = cv2.equalizeHist(recogniseImg)
+                # recogniseImg = cv2.equalizeHist(recogniseImg)
                 id = int(m[5:7])
-                index = self.recogniseFace(mat(recogniseImg).flatten(), weights,ImgGradient)
+                index = self.recogniseFace(mat(recogniseImg).flatten(), weights, ImgGradient)
                 if self.ids[index] == id:
                     count = count + 1
                 j = j + 1
