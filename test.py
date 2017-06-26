@@ -12,25 +12,67 @@ from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import preprocessing
 
-# horizon = 20
-# vertical = 15
-# OB = math.sqrt(3)
-# BC = math.tan(math.pi / 180 * horizon) * OB
-# AB = math.tan(math.pi / 180 * vertical) * OB
-# BD = math.sqrt(BC ** 2 + AB ** 2) / 2
-# tan_angle = BD / OB
-# angle = math.atan(BD / OB) * (180 / math.pi)
-# print(angle)
+set_4_exp = np.array(
+    [0.817, 0.817, 0.825, 0.825, 0.817, 0.817, 0.817, 0.833, 0.833, 0.833, 0.833, 0.833, 0.833, 0.825, 0.825, 0.825,
+     0.808, 0.8])
+set_5_exp = np.array(
+    [0.383, 0.39, 0.4, 0.411, 0.411, 0.411, 0.417, 0.422, 0.428, 0.439, 0.45, 0.444, 0.45, 0.45, 0.456, 0.45, 0.439,
+     0.411])
+set_4_log = np.array(
+    [0.808, 0.808, 0.817, 0.817, 0.817, 0.817, 0.817, 0.817, 0.817,0.817, 0.817, 0.808, 0.808, 0.808, 0.808, 0.8, 0.8, 0.8])
+parameters = np.array([1, 20, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 180, 200, 250, 300])
+plt.figure()
+plt.plot(parameters, set_4_log, c='c', ls='-.', label='Logarithm', linewidth=3)
+plt.plot(parameters, set_4_exp, c='#ff6347', ls='-.', label='Exponentiation', linewidth=3)
+plt.ylim((0.79,0.85))
+plt.xlabel('parameter')
+plt.ylabel('Mean Recognition Rate')
+plt.title('Recognition rates on set 4')
+plt.legend()
+plt.show()
 
-print(math.exp(0))
+# plt.plot(parameters, set_5_exp, c='#ff6347', ls='-.', label='Exponentiation', linewidth=3)
+# plt.ylim((0.38,0.47))
+# plt.xlabel('parameter')
+# plt.ylabel('Mean Recognition Rate')
+# plt.title('Recognition rates on set 5')
+# plt.legend()
+# plt.show()
+
+
 # path = '/cs/home/jf231/Dissertation/CS5099/PartImages/'
 # destinations = ['/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_1/',
 #                 '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_2/',
 #                 '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/',
 #                 '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_4/',
-#                 '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/']
+#                 '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_5/',
+#                 '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_6/']
 # for m in os.listdir(path):
 #     if (len(m) == 24):
+#         horizon = int(m[13:16])
+#         vertical = int(m[18:20])
+#         angle = int((horizon + vertical) / 2)
+#         img = cv2.imread(path + m, 0)
+#         if angle < 12:
+#
+#             cv2.imwrite(destinations[0] + m, img)
+#         elif angle < 22:
+#
+#             cv2.imwrite(destinations[1] + m, img)
+#         elif angle < 37:
+#
+#             cv2.imwrite(destinations[2] + m, img)
+#         elif angle < 50 and vertical < 90 and horizon < 90:
+#
+#             cv2.imwrite(destinations[3] + m, img)
+#         elif angle < 75 and vertical < 90 and horizon < 110:
+#
+#             cv2.imwrite(destinations[4] + m, img)
+#         else:
+#             cv2.imwrite(destinations[5] + m, img)
+
+# for m in os.listdir(path):
+# if (len(m) == 24):
 #         horizon = int(m[13:16])
 #         vertical = int(m[18:20])
 #         OB = 1.0
