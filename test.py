@@ -11,25 +11,87 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import preprocessing
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
-set_4_exp = np.array(
-    [0.817, 0.817, 0.825, 0.825, 0.817, 0.817, 0.817, 0.833, 0.833, 0.833, 0.833, 0.833, 0.833, 0.825, 0.825, 0.825,
-     0.808, 0.8])
-set_5_exp = np.array(
-    [0.383, 0.39, 0.4, 0.411, 0.411, 0.411, 0.417, 0.422, 0.428, 0.439, 0.45, 0.444, 0.45, 0.45, 0.456, 0.45, 0.439,
-     0.411])
-set_4_log = np.array(
-    [0.808, 0.808, 0.817, 0.817, 0.817, 0.817, 0.817, 0.817, 0.817,0.817, 0.817, 0.808, 0.808, 0.808, 0.808, 0.8, 0.8, 0.8])
-parameters = np.array([1, 20, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 180, 200, 250, 300])
+scale_ratio = np.array([0.9, 0.915, 0.925, 0.935, 0.95, 0.965, 0.975, 0.985, 1, 1.015, 1.025, 1.035, 1.05, 1.065, 1.075,
+                        1.085, 1.1])
+improved_4 = np.array(
+    [0.733, 0.725, 0.8, 0.808, 0.883, 0.9, 0.875, 0.892, 0.942, 0.858, 0.875, 0.85, 0.842, 0.8, 0.775, 0.775, 0.725])
+original_4 = np.array(
+    [0.55, 0.617, 0.55, 0.6, 0.692, 0.7, 0.65, 0.667, 0.708, 0.575, 0.6, 0.592, 0.55, 0.467, 0.475, 0.475, 0.467])
+
+improved_3 = np.array(
+    [0.891, 0.903, 0.915, 0.915, 0.952, 0.952, 0.939, 0.939, 0.958, 0.939, 0.933, 0.927, 0.903, 0.921, 0.915, 0.915,
+     0.842])
+original_3 = np.array(
+    [0.794, 0.818, 0.812, 0.824, 0.824, 0.830, 0.824, 0.824, 0.830, 0.818, 0.824, 0.818, 0.788, 0.788, 0.764, 0.764,
+     0.703])
+print(np.cov(improved_3))
+print(np.cov(original_3))
 plt.figure()
-plt.plot(parameters, set_4_log, c='c', ls='-.', label='Logarithm', linewidth=3)
-plt.plot(parameters, set_4_exp, c='#ff6347', ls='-.', label='Exponentiation', linewidth=3)
-plt.ylim((0.79,0.85))
-plt.xlabel('parameter')
-plt.ylabel('Mean Recognition Rate')
-plt.title('Recognition rates on set 4')
-plt.legend()
+# plt.plot(scale_ratio, improved_4)
+# plt.plot(scale_ratio, original_4)
+coe = np.polyfit(scale_ratio, improved_3, 4)
+poly = np.poly1d(coe)
+xs = np.arange(0.9, 1.1, 0.01)
+ys = poly(xs)
+plt.plot(scale_ratio, improved_3, 'o')
+plt.plot(xs, ys)
+
+coe = np.polyfit(scale_ratio, original_3, 4)
+poly = np.poly1d(coe)
+xs = np.arange(0.9, 1.1, 0.01)
+ys = poly(xs)
+plt.plot(scale_ratio, original_3, 'o')
+plt.plot(xs, ys)
+plt.ylim(0.7, 1)
 plt.show()
+########################################################################################################################
+# Draw 3d graphs for shifting, on image set 3
+# import pandas as pd
+# improved_rates = pd.read_csv('improved_rates.csv')
+# original_rates = pd.read_csv('original_rates.csv')
+# improved_rates = np.array(improved_rates)
+# original_rates = np.array(original_rates)
+# print(np.cov(improved_rates.flatten()))
+# print(np.cov(original_rates.flatten()))
+# fig = plt.figure()
+# ax = fig.gca(projection='3d')
+# shift_x = np.array([-8, -6, -4, -2, 0, 2, 4, 6, 8])
+# shift_y = np.array([-8, -6, -4, -2, 0, 2, 4, 6, 8])
+# x,y = np.meshgrid(shift_x,shift_y)
+# ax.set_xlabel('x')
+# ax.set_ylabel('y')
+# ax.set_zlabel('Recognition Rate')
+# ax.scatter(x, y, improved_rates, marker='o',color = 'c')
+# ax.scatter(x, y, original_rates, marker='^',color = '#ff6347')
+# ax.plot_wireframe(x, y, improved_rates, color='c', linewidth=2, label='Improved Rates')
+# ax.plot_wireframe(x, y, original_rates, color='#ff6347', linewidth = 2,label='Original Rates')
+# plt.legend()
+# plt.show()
+########################################################################################################################
+# Select suitable parameter for exponentiation and logarithm
+# set_4_exp = np.array(
+#     [0.817, 0.817, 0.825, 0.825, 0.817, 0.817, 0.817, 0.833, 0.833, 0.833, 0.833, 0.833, 0.833, 0.825, 0.825, 0.825,
+#      0.808, 0.8])
+# set_5_exp = np.array(
+#     [0.383, 0.39, 0.4, 0.411, 0.411, 0.411, 0.417, 0.422, 0.428, 0.439, 0.45, 0.444, 0.45, 0.45, 0.456, 0.45, 0.439,
+#      0.411])
+# set_4_log = np.array(
+#     [0.808, 0.808, 0.817, 0.817, 0.817, 0.817, 0.817, 0.817, 0.817,0.817, 0.817, 0.808, 0.808, 0.808, 0.808, 0.8, 0.8, 0.8])
+# parameters = np.array([1, 20, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 180, 200, 250, 300])
+# plt.figure()
+# plt.plot(parameters, set_4_log, c='c', ls='-.', label='Logarithm', linewidth=3)
+# plt.plot(parameters, set_4_exp, c='#ff6347', ls='-.', label='Exponentiation', linewidth=3)
+# plt.ylim((0.79,0.85))
+# plt.xlabel('parameter')
+# plt.ylabel('Mean Recognition Rate')
+# plt.title('Recognition rates on set 4')
+# plt.legend()
+# plt.show()
 
 # plt.plot(parameters, set_5_exp, c='#ff6347', ls='-.', label='Exponentiation', linewidth=3)
 # plt.ylim((0.38,0.47))
@@ -107,83 +169,4 @@ plt.show()
 #     'formats': ['i', 'i']
 # })
 # sub_regions = np.array([(24, 21), (24, 24), (27, 24)], dtype=region_type)
-
-
-# boost = AdaBoostClassifier(base_estimator=DecisionTreeClassifier())
-# parameters = {'n_estimators': (10, 12, 15, 17, 20),
-#               'base_estimator__max_depth': (1, 2, 3),
-#               'learning_rate': (0.6, 0.7, 0.8, 0.9),
-#               'algorithm': ('SAMME', 'SAMME.R')}
-# clf = GridSearchCV(boost, parameters)
-# clf.fit(iris.data, iris.target)
-# print(clf.best_params_)
-# print(clf.best_estimator_)
-#
-# boost = RandomForestClassifier()
-# parameters = {'n_estimators': (10, 12, 15, 17, 20)}
-# clf = GridSearchCV(boost, parameters)
-# clf.fit(iris.data, iris.target)
-# print(clf.best_params_)
-# print(clf.best_estimator_)
-
-####################################################################################################################
-# Choose the overlapping size
-# characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm'])
-# overlap_ratios = array([0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4])
-# acc = [0.0] * 8
-# count = 0
-# for overlap_ratio in overlap_ratios:
-#     obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio)
-#     obj.run_LBP(path, character)
-#     temp = 0.0
-#     for char in characters:
-#         temp += obj.calculate_Accuracy(path, char)
-#     acc[count] = temp / 4
-#     count +=1
-# plt.figure()
-# plt.plot(overlap_ratios, acc, c='c', ls='-.', linewidth=3)
-# plt.xlabel('Overlap Size')
-# plt.ylabel('Mean Recognition Rate')
-# plt.show()
-####################################################################################################################
-# Choose Radius, Number of sampling points, number of local regions
-# Choose 2, 8, 7
-# rate = [([0.0] * 8) for i in range(3)]
-# win_num = array([3, 4, 5, 6, 7, 8, 9, 10])
-# characters = array(['P00A+000E-20.pgm', 'P00A+000E-35.pgm', 'P00A+000E+20.pgm', 'P00A+000E+45.pgm',])
-#
-# for j in range(8):
-#     obj = LBP_Implement(1, 8, type, uniform, win_num[j], win_num[j],0)
-#     obj.run_LBP(path, character)
-#     temp = 0.0
-#     for c in characters:
-#         temp += obj.calculate_Accuracy(path, c)
-#     rate[0][j] = temp / 4
-# print(rate[0])
-#
-# for j in range(8):
-#     obj = LBP_Implement(2, 8, type, uniform, win_num[j], win_num[j],0)
-#     obj.run_LBP(path, character)
-#     temp = 0.0
-#     for c in characters:
-#         temp += obj.calculate_Accuracy(path, c)
-#     rate[1][j] = temp / 4
-# print(rate[1])
-#
-# for j in range(8):
-#     obj = LBP_Implement(2, 16, type, uniform, win_num[j], win_num[j],0)
-#     obj.run_LBP(path, character)
-#     temp = 0.0
-#     for c in characters:
-#         temp += obj.calculate_Accuracy(path, c)
-#     rate[2][j] = temp / 4
-# print(rate[2])
-# plt.figure()
-# plt.plot(win_num, rate[0], c='c', ls='-.', label='LBP 8,1',linewidth = 2)
-# plt.plot(win_num, rate[1], c='#ffa500', ls='-.', label='LBP 8,2',linewidth = 2)
-# plt.plot(win_num, rate[2], c='#ff6347', ls='-.', label='LBP 16,2',linewidth = 2)
-# plt.legend(loc=4)
-# plt.xlabel('Window Number')
-# plt.ylabel('Mean Recognition Rate')
-# plt.show()
 ####################################################################################################################
