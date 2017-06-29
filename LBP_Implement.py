@@ -29,7 +29,6 @@ class LBP_Implement(object):
         self.overlap_ratio = overlap_ratio
         self.gradients = 0
         self.gamma = 0.15
-        self.parameter = 0
         if (self.overlap_ratio > 0):
             region_width = self.Width / self.w_num
             region_height = self.Height / self.h_num
@@ -52,7 +51,7 @@ class LBP_Implement(object):
             t0 = time.time()
             result = function(*args, **kwargs)
             t1 = time.time()
-            print("Running %s: %s seconds" % (function.__name__, str(around(t1 - t0, decimals=2))))
+            print("Running %s: %s seconds" % (function.__name__, str(t1 - t0)))
             return result
 
         return function_timer
@@ -161,8 +160,9 @@ class LBP_Implement(object):
         # for i in range(H):
         #     for j in range(W):
         #         # res[i, j] = around(math.log(100 * res[i, j] + 1), decimals=4)
-        #         res[i, j] = around(math.exp(self.parameter * res[i, j]) - 1, decimals=4)
-
+        #         res[i, j] = around(math.exp(100 * res[i, j]) - 1, decimals=4)
+        # row_sums = res.sum(axis=1)
+        # res = around(res / row_sums[:, newaxis], decimals=4)
         res = res.flatten().T.reshape(self.Width * self.Height, 1)
         return res
 
@@ -257,18 +257,17 @@ class LBP_Implement(object):
                             pattern = Img[c, r]
                             for k in range(self.Patterns):
                                 if pattern == patterns[k]:
-                                    hist[k] += gradients[c, r]
-                                    # hist[k] += 1
+                                    # hist[k] += gradients[c, r]
+                                    hist[k] += 1
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
-        # from sklearn.preprocessing import normalize
-        # Histogram = mat(normalize(Histogram, axis=0))
+        from sklearn.preprocessing import normalize
+        Histogram = mat(normalize(Histogram,axis=0))
         # print(Histogram[0:8,0:8])
         return Histogram.flatten().T
 
     @fn_timer
-    def run_LBP(self, path, para):
-        self.parameter = para
+    def run_LBP(self, path):
         self.Image_Num = len([file for file in os.listdir(path)
                               if os.path.isfile(os.path.join(path, file))])
         self.ids = [0 for i in range(self.Image_Num)]
@@ -318,7 +317,6 @@ class LBP_Implement(object):
                 minIndex = i
                 minVals = distance
         return minIndex
-
     # Calculate the recognition rate
     def calculate_Accuracy(self, mypath, weights):
         j = 0
@@ -405,7 +403,7 @@ class LBP_Implement(object):
         temp = temp.flatten()
         sorted_weights = sorted(temp)
         thresholds = [0.1, 0.8, 0.9, 1]
-        weight_standard = [1, 2, 3, 5]
+        weight_standard = [0, 1, 2, 4]
         start = -1
         for t in range(4):
             index = int(columns * thresholds[t]) - 1
@@ -441,7 +439,7 @@ class LBP_Implement(object):
         extra_index = 0
         intra_index = 0
         # load images, intra-personal pairs and extra-personal pairs
-        for con_index in range(con_num - 1):
+        for con_index in range(con_num-1):
             for i in os.listdir(mypath):
                 if (len(i) == 24):
                     id1 = int(i[5:7])
@@ -455,7 +453,7 @@ class LBP_Implement(object):
                         img_gra1 = self.cal_Gradient(mat(img1))
                         hist1 = self.calHistogram(lbp_op1, img_gra1)
                         hist1 = hist1.reshape(self.Patterns, region_num)
-                        remain_cons = cons[(con_index + 1):]
+                        remain_cons = cons[(con_index+1):]
                         # Read another image to form a pair
                         for j in os.listdir(mypath):
                             if (len(j) == 24):
@@ -500,3 +498,5 @@ class LBP_Implement(object):
         from FeatureSelection import feature_Select
         fs = feature_Select(intra_distance, extra_distance, intra_y, extra_y)
         return fs
+
+
