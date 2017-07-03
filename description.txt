@@ -1,0 +1,17 @@
+set3_original_rates: shift in horizonal and vertical directions (-8, -6, -4, -2, 0, 2, 4, 6, 8), that is 9 * 9 = 81 numbers,
+                     original LBP, 8*8 regions, no overlap, uniform patterns, on image set 3;
+
+set3_improved_rates: shift in horizonal and vertical diresctions,
+                     improved with Sobel (Image gradient, 120 exponentiation), Gamma correction (0.15), and histogram equalization;
+
+set3_Gau_para: use two dimensional Gaussion founction as the weight for each pixel (improve the algorithm on the original LBP),
+               try to find the optimal sigma and overlap ratio, on image set 3.
+               sigma: 0.4, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 7
+               overlap ratio: 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35
+
+set4_Gau_para: in order to fina more reliable parameters, alao test on image set 4 (seems set 4 has a better result);
+
+set3_Gau_shift: test the performance when using Gaussian, shift in horizonal and vertical directions,
+                horizonal: (-8, -6, -4, -2, 0, 2, 4, 6, 8)
+                vertical: (-6, -4, -2, 0, 2, 4, 6)
+                it seems the performance declines dramatically when shifting in vertical direction;
