@@ -9,7 +9,7 @@ set3_Gau_para: use two dimensional Gaussion founction as the weight for each pix
                sigma: 0.4, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 7
                overlap ratio: 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35
 
-set4_Gau_para: in order to fina more reliable parameters, alao test on image set 4 (seems set 4 has a better result);
+set4_Gau_para: in order to find more reliable parameters, alao test on image set 4 (seems set 4 has a better result);
 
 set3_Gau_shift: test the performance when using Gaussian, shift in horizonal and vertical directions,
                 horizonal: (-8, -6, -4, -2, 0, 2, 4, 6, 8)
