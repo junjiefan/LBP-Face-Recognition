@@ -56,8 +56,7 @@ def feature_Select(x1, x2, y1, y2):
         # y_pred = rf.predict(X_test)
         # print(confusion_matrix(y_test, y_pred))
     importance = np.around(importance / 5, decimals=5)
-    temp = importance.reshape(7, 7)
-    # print(temp)s
+    temp = importance.reshape(8, 8)
     H, W = np.shape(temp)
     adjust = int(W / 2)
     for row in range(H):

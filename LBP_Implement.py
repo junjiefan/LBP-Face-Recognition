@@ -4,31 +4,25 @@ from numpy import *
 import cv2
 import time
 from functools import wraps
-from sklearn.preprocessing import normalize
-
-
 class LBP_Implement(object):
     # R: the radius, P: the number of sampling points, type: original LBP or circular LBP operator
     # uniform: uniform patterns, devided into w_num * h_num regions
     # overlap_ratio: the ratio of overlapping regions
-    def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio):
+    def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio, gap_size):
         self.Width = 168
         self.Height = 192
-        self.Image_Num = 0
         self.Radius = R
         self.Points = P
         self.lbp_type = type
         self.uniform = uniform
         self.w_num = w_num
         self.h_num = h_num
-        self.LBPoperator = 0
-        self.Histograms = 0
-        # self.weight = 0
-        # self.isweighted = 0
-        self.ids = 0
         self.overlap_ratio = overlap_ratio
-        self.gradients = 0
         self.gamma = 0.15
+        self.gap_size = gap_size
+        if (self.gap_size > 0):
+            self.Height = self.Height - self.gap_size * 2
+            self.Width = self.Width - self.gap_size * 2
         if (self.overlap_ratio > 0):
             region_width = self.Width / self.w_num
             region_height = self.Height / self.h_num
@@ -66,6 +60,7 @@ class LBP_Implement(object):
                 try:
                     img = cv2.imread(mypath + m, 0)
                     self.ids[j] = int(m[5:7])
+                    img = mat(img)[self.gap_size:self.Height + self.gap_size, self.gap_size:self.gap_size + self.Width]
                     self.gradients[:, j] = self.cal_Gradient(mat(img))
                     # img = self.gamma_correction(img, self.gamma)
                     # img = cv2.GaussianBlur(img, (3, 3), 0)
@@ -100,8 +95,8 @@ class LBP_Implement(object):
         R = self.Radius
         # The offset of 3*3 neighbors
         if (self.lbp_type == 1):
-            Neighbor_x = [-1, 0, 1, 1, 1, 0, -1, -1]
-            Neighbor_y = [-1, -1, -1, 0, 1, 1, 1, 0]
+            Neighbor_h = [-1, 0, 1, 1, 1, 0, -1, -1]
+            Neighbor_w = [-1, -1, -1, 0, 1, 1, 1, 0]
         else:
             pi = math.pi
         LBPoperator = mat(zeros(shape(FaceMat)))
@@ -109,16 +104,16 @@ class LBP_Implement(object):
             face = FaceMat[:, i].reshape(self.Height, self.Width)  # Height represents the number of row
             H, W = shape(face)
             tempface = mat(zeros((H, W)))
-            for x in range(R, H - R):
-                for y in range(R, W - R):
+            for h in range(R, H - R):
+                for w in range(R, W - R):
                     repixel = ''
-                    pixel = int(face[x, y])
+                    pixel = int(face[h, w])
                     # Original LBP algorithm, 3*3
                     if (self.lbp_type == 1):
                         for p in range(8):
-                            xp = x + Neighbor_x[p]
-                            yp = y + Neighbor_y[p]
-                            if int(face[xp, yp]) > pixel:
+                            hp = h + Neighbor_h[p]
+                            wp = w + Neighbor_w[p]
+                            if int(face[hp, wp]) > pixel:
                                 repixel += '1'
                             else:
                                 repixel += '0'
@@ -126,9 +121,9 @@ class LBP_Implement(object):
                     else:
                         for p in [3, 4, 5, 6, 7, 0, 1, 2]:
                             p = float(p)
-                            xp = x + R * cos(2 * pi * (p / self.Points))
-                            yp = y - R * sin(2 * pi * (p / self.Points))
-                            neighbor_pixel = self.bilinear_interpolation(face, xp, yp)
+                            hp = h + R * cos(2 * pi * (p / self.Points))
+                            wp = w - R * sin(2 * pi * (p / self.Points))
+                            neighbor_pixel = self.bilinear_interpolation(face, hp, wp)
                             if neighbor_pixel > pixel:
                                 repixel += '1'
                             else:
@@ -138,11 +133,11 @@ class LBP_Implement(object):
                     if (self.uniform == 1):
                         U = self.transition_number(repixel)
                         if U <= 2:
-                            tempface[x, y] = int(repixel, base=2)
+                            tempface[h, w] = int(repixel, base=2)
                         else:
-                            tempface[x, y] = self.Points + 1
+                            tempface[h, w] = self.Points + 1
                     else:
-                        tempface[x, y] = int(repixel, base=2)
+                        tempface[h, w] = int(repixel, base=2)
             LBPoperator[:, i] = tempface.flatten().T
         return LBPoperator
 
@@ -156,13 +151,12 @@ class LBP_Implement(object):
         res = cv2.addWeighted(sobelx, 0.5, sobely, 0.5, 0)
         row_sums = res.sum(axis=1)
         res = around(res / row_sums[:, newaxis], decimals=4)
-        # H, W = shape(res)
-        # for i in range(H):
-        #     for j in range(W):
-        #         # res[i, j] = around(math.log(100 * res[i, j] + 1), decimals=4)
-        #         res[i, j] = around(math.exp(100 * res[i, j]) - 1, decimals=4)
-        # row_sums = res.sum(axis=1)
-        # res = around(res / row_sums[:, newaxis], decimals=4)
+        if self.exp_para != 0:
+            H, W = shape(res)
+            for i in range(H):
+                for j in range(W):
+                    # res[i, j] = around(math.log(100 * res[i, j] + 1), decimals=4)
+                    res[i, j] = around(math.exp(120 * res[i, j]) - 1, decimals=4)
         res = res.flatten().T.reshape(self.Width * self.Height, 1)
         return res
 
@@ -207,42 +201,44 @@ class LBP_Implement(object):
             count = 0
             for i in range(self.region_h_num):
                 for j in range(self.region_w_num):
-                    start_x = i * mask_height - i * self.overlap_size
-                    end_x = (i + 1) * mask_height - i * self.overlap_size
-                    start_y = j * mask_width - j * self.overlap_size
-                    end_y = (j + 1) * mask_width - j * self.overlap_size
+                    start_h = i * mask_height - i * self.overlap_size
+                    end_h = (i + 1) * mask_height - i * self.overlap_size
+                    start_w = j * mask_width - j * self.overlap_size
+                    end_w = (j + 1) * mask_width - j * self.overlap_size
 
-                    if (end_x < self.Height and end_y < self.Width):
+                    if (end_h < self.Height and end_w < self.Width):
                         # mask[start_x:end_x, start_y:end_y] = 255
-                        x1 = start_x
-                        x2 = end_x
-                        y1 = start_y
-                        y2 = end_y
+                        h1 = start_h
+                        h2 = end_h
+                        w1 = start_w
+                        w2 = end_w
                     else:
-                        if (end_x >= self.Height and end_y < self.Width):
-                            x1 = self.Height - mask_height - 1
-                            y1 = start_y
-                            x2 = self.Height - 1
-                            y2 = end_y
-                        if (end_x < self.Height and end_y >= self.Width):
-                            y1 = self.Width - mask_width - 1
-                            x1 = start_x
-                            y2 = self.Width - 1
-                            x2 = end_x
-                        if (end_x >= self.Height and end_y >= self.Width):
-                            x1 = self.Height - mask_height - 1
-                            x2 = self.Height - 1
-                            y1 = self.Width - mask_width - 1
-                            y2 = self.Width - 1
-                    # hist = cv2.calcHist([array(Img, uint8)], [0], mask, [self.Patterns], [0, 256])
+                        if (end_h >= self.Height and end_w < self.Width):
+                            h1 = self.Height - mask_height - 1
+                            w1 = start_w
+                            h2 = self.Height - 1
+                            w2 = end_w
+                        if (end_h < self.Height and end_w >= self.Width):
+                            w1 = self.Width - mask_width - 1
+                            h1 = start_h
+                            w2 = self.Width - 1
+                            h2 = end_h
+                        if (end_h >= self.Height and end_w >= self.Width):
+                            h1 = self.Height - mask_height - 1
+                            h2 = self.Height - 1
+                            w1 = self.Width - mask_width - 1
+                            w2 = self.Width - 1
+                    gaus = self.Gaussain2D(h1, w1, h2, w2, self.sigma)
                     hist = [0.0] * self.Patterns
-                    for c in range(x1, x2):
-                        for r in range(y1, y2):
+                    for c in range(h1, h2):
+                        for r in range(w1, w2):
                             pattern = Img[c, r]
                             for k in range(self.Patterns):
                                 if pattern == patterns[k]:
-                                    hist[k] += gradients[c, r]
-                                    # hist[k] += 1
+                                    if self.isgradiented == 1:
+                                        hist[k] += gradients[c, r]
+                                    else:
+                                        hist[k] += 1 * gaus[c - h1, r - w1]
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
         else:
@@ -252,22 +248,39 @@ class LBP_Implement(object):
             for i in range(self.h_num):
                 for j in range(self.w_num):
                     hist = [0.0] * self.Patterns
-                    for c in range(i * mask_height, (i + 1) * mask_height):
-                        for r in range(j * mask_width, (j + 1) * mask_width):
+                    h1 = i * mask_height
+                    h2 = (i + 1) * mask_height
+                    w1 = j * mask_width
+                    w2 = (j + 1) * mask_width
+                    gaus = self.Gaussain2D(h1, w1, h2, w2, self.sigma)
+                    for c in range(h1, h2):
+                        for r in range(w1, w2):
                             pattern = Img[c, r]
                             for k in range(self.Patterns):
                                 if pattern == patterns[k]:
-                                    # hist[k] += gradients[c, r]
-                                    hist[k] += 1
+                                    if self.isgradiented == 1:
+                                        hist[k] += gradients[c, r]
+                                    else:
+                                        hist[k] += 1 * gaus[c - h1, r - w1]
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
-        from sklearn.preprocessing import normalize
-        Histogram = mat(normalize(Histogram,axis=0))
-        # print(Histogram[0:8,0:8])
         return Histogram.flatten().T
 
+    # Use Gaussian to gain weights for each pixel, the weight is depend on its location
+    def Gaussain2D(self, h1, w1, h2, w2, sigma):
+        x0 = int((w1 + w2) / 2)
+        y0 = int((h1 + h2) / 2)
+        x = linspace(w1, w2 - 1, (w2 - w1))
+        y = linspace(h1, h2 - 1, (h2 - h1))
+        x, y = meshgrid(x, y)
+        gaus = exp(-(((x - x0) ** 2 + (y - y0) ** 2) / (2 * (sigma ** 2))))
+        return gaus
+
     @fn_timer
-    def run_LBP(self, path):
+    def run_LBP(self, path, isgradient, exp_para, sigma):
+        self.isgradiented = isgradient
+        self.exp_para = exp_para
+        self.sigma = sigma
         self.Image_Num = len([file for file in os.listdir(path)
                               if os.path.isfile(os.path.join(path, file))])
         self.ids = [0 for i in range(self.Image_Num)]
@@ -317,13 +330,16 @@ class LBP_Implement(object):
                 minIndex = i
                 minVals = distance
         return minIndex
+
     # Calculate the recognition rate
-    def calculate_Accuracy(self, mypath, weights):
+    def calculate_Accuracy(self, mypath, weights, shift_x, shift_y):
         j = 0
         count = 0
         for m in os.listdir(mypath):
             if (len(m) == 24):
                 recogniseImg = cv2.imread(mypath + m, 0)
+                recogniseImg = mat(recogniseImg)[self.gap_size + shift_x:self.gap_size + shift_x + self.Height,
+                               self.gap_size + shift_y: self.gap_size + shift_y + self.Width]
                 ImgGradient = self.cal_Gradient(mat(recogniseImg))
                 # recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
                 # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
@@ -357,10 +373,11 @@ class LBP_Implement(object):
         for m in os.listdir(mypath):
             if (len(m) == 24):
                 image = cv2.imread(mypath + m, 0)
-                # imgage = self.gamma_correction(imgage, self.gamma)
                 id = int(m[5:7])
-                imageLBP = self.LBP(mat(image).flatten().T)
                 imageGradient = self.cal_Gradient(mat(image))
+                # image = self.gamma_correction(image, self.gamma)
+                # image = cv2.equalizeHist(image)
+                imageLBP = self.LBP(mat(image).flatten().T)
                 histogram = self.calHistogram(imageLBP, imageGradient)
                 histogram = histogram.reshape(self.Patterns, columns)
                 temp = [0] * columns
@@ -420,7 +437,6 @@ class LBP_Implement(object):
     # This function calculate the Chi square distance between two corresponding regions
     def select_Features(self, mypath, hori_angle, cons, subject_num):
         con_num = len(cons)
-        print(con_num)
         intra_num = int((subject_num * con_num * (con_num - 1)) / 2)
         extra_num = int((subject_num * (subject_num - 1) * con_num))
         print('intra %d' % intra_num)
@@ -439,7 +455,7 @@ class LBP_Implement(object):
         extra_index = 0
         intra_index = 0
         # load images, intra-personal pairs and extra-personal pairs
-        for con_index in range(con_num-1):
+        for con_index in range(con_num - 1):
             for i in os.listdir(mypath):
                 if (len(i) == 24):
                     id1 = int(i[5:7])
@@ -453,7 +469,7 @@ class LBP_Implement(object):
                         img_gra1 = self.cal_Gradient(mat(img1))
                         hist1 = self.calHistogram(lbp_op1, img_gra1)
                         hist1 = hist1.reshape(self.Patterns, region_num)
-                        remain_cons = cons[(con_index+1):]
+                        remain_cons = cons[(con_index + 1):]
                         # Read another image to form a pair
                         for j in os.listdir(mypath):
                             if (len(j) == 24):
@@ -483,8 +499,6 @@ class LBP_Implement(object):
                                         intra_index += 1
                                     else:
                                         extra_index += 1
-        print(intra_index)
-        print(extra_index)
         # print(intra_distance[0:5,0:5])
         # print(extra_distance[0:5,0:5])
 
@@ -498,5 +512,3 @@ class LBP_Implement(object):
         from FeatureSelection import feature_Select
         fs = feature_Select(intra_distance, extra_distance, intra_y, extra_y)
         return fs
-
-
