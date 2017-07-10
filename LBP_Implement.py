@@ -4,6 +4,8 @@ from numpy import *
 import cv2
 import time
 from functools import wraps
+
+
 class LBP_Implement(object):
     # R: the radius, P: the number of sampling points, type: original LBP or circular LBP operator
     # uniform: uniform patterns, devided into w_num * h_num regions
@@ -20,6 +22,7 @@ class LBP_Implement(object):
         self.overlap_ratio = overlap_ratio
         self.gamma = 0.15
         self.gap_size = gap_size
+        self.weights = []
         if (self.gap_size > 0):
             self.Height = self.Height - self.gap_size * 2
             self.Width = self.Width - self.gap_size * 2
@@ -30,6 +33,8 @@ class LBP_Implement(object):
             print('Overlap_size: %d' % self.overlap_size)
             self.region_w_num = 1 + math.ceil((self.Width - region_width) / (region_width - self.overlap_size))
             self.region_h_num = 1 + math.ceil((self.Height - region_height) / (region_height - self.overlap_size))
+            # print(self.region_h_num)
+            # print(self.region_w_num)
         if (self.uniform == 1):
             self.Patterns = self.Points * (self.Points - 1) + 3
             # P*(P-1) for patterns with two transitions,
@@ -156,7 +161,7 @@ class LBP_Implement(object):
             for i in range(H):
                 for j in range(W):
                     # res[i, j] = around(math.log(100 * res[i, j] + 1), decimals=4)
-                    res[i, j] = around(math.exp(120 * res[i, j]) - 1, decimals=4)
+                    res[i, j] = around(math.exp(self.exp_para * res[i, j]) - 1, decimals=4)
         res = res.flatten().T.reshape(self.Width * self.Height, 1)
         return res
 
@@ -228,7 +233,7 @@ class LBP_Implement(object):
                             h2 = self.Height - 1
                             w1 = self.Width - mask_width - 1
                             w2 = self.Width - 1
-                    gaus = self.Gaussain2D(h1, w1, h2, w2, self.sigma)
+                    gaus = self.Gaussain_Border(h1, w1, h2, w2, self.sigma)
                     hist = [0.0] * self.Patterns
                     for c in range(h1, h2):
                         for r in range(w1, w2):
@@ -252,7 +257,7 @@ class LBP_Implement(object):
                     h2 = (i + 1) * mask_height
                     w1 = j * mask_width
                     w2 = (j + 1) * mask_width
-                    gaus = self.Gaussain2D(h1, w1, h2, w2, self.sigma)
+                    # gaus = self.Gaussain2D(h1, w1, h2, w2, self.sigma)
                     for c in range(h1, h2):
                         for r in range(w1, w2):
                             pattern = Img[c, r]
@@ -261,7 +266,8 @@ class LBP_Implement(object):
                                     if self.isgradiented == 1:
                                         hist[k] += gradients[c, r]
                                     else:
-                                        hist[k] += 1 * gaus[c - h1, r - w1]
+                                        # hist[k] += 1 * gaus[c - h1, r - w1]
+                                        hist[k] += 1
                     Histogram[:, count] = mat(hist).flatten().T
                     count += 1
         return Histogram.flatten().T
@@ -274,6 +280,30 @@ class LBP_Implement(object):
         y = linspace(h1, h2 - 1, (h2 - h1))
         x, y = meshgrid(x, y)
         gaus = exp(-(((x - x0) ** 2 + (y - y0) ** 2) / (2 * (sigma ** 2))))
+        return gaus
+
+    def Gaussain_Border(self, h1, w1, h2, w2, sigma):
+        xc = int((w1 + w2) / 2)
+        yc = int((h1 + h2) / 2)
+        x = linspace(w1, xc - 1, (xc - w1))
+        y = linspace(h1, yc - 1, (yc - h1))
+        x, y = meshgrid(x, y)
+        gaus_1 = exp(-(((x - w1) ** 2 + (y - h1) ** 2) / (2 * (sigma ** 2))))
+        x = linspace(xc, w2 - 1, (w2 - xc))
+        y = linspace(h1, yc - 1, (yc - h1))
+        x, y = meshgrid(x, y)
+        gaus_2 = exp(-(((x - w2 + 1) ** 2 + (y - h1) ** 2) / (2 * (sigma ** 2))))
+        x = linspace(w1, xc - 1, (xc - w1))
+        y = linspace(yc, h2 - 1, (h2 - yc))
+        x, y = meshgrid(x, y)
+        gaus_3 = exp(-(((x - w1) ** 2 + (y - h2 + 1) ** 2) / (2 * (sigma ** 2))))
+        x = linspace(xc, w2 - 1, (w2 - xc))
+        y = linspace(yc, h2 - 1, (h2 - yc))
+        x, y = meshgrid(x, y)
+        gaus_4 = exp(-(((x - w2 + 1) ** 2 + (y - h2 + 1) ** 2) / (2 * (sigma ** 2))))
+        t1 = concatenate((gaus_1, gaus_2), axis=1)
+        t2 = concatenate((gaus_3, gaus_4), axis=1)
+        gaus = 1 - concatenate((t1, t2))
         return gaus
 
     @fn_timer
@@ -310,7 +340,6 @@ class LBP_Implement(object):
         for i in range(shape(self.LBPoperator)[1]):
             Histogram = self.Histograms[:, i]
             # Utilize Chi square distance to find the most close match
-
             if (len(weights) == 0):
                 distance = ((array(Histogram - recogniseHistogram) ** 2).sum()) / (
                     (array(Histogram + recogniseHistogram)).sum())
@@ -331,15 +360,20 @@ class LBP_Implement(object):
                 minVals = distance
         return minIndex
 
-    # Calculate the recognition rate
-    def calculate_Accuracy(self, mypath, weights, shift_x, shift_y):
+        # Calculate the recognition rate
+
+    def calculate_Accuracy(self, mypath, shift_vertical, shift_horizonal):
+        # mypath = '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/'
+        # shift_vertical = self.shift_vertical
+        weights = self.weights
         j = 0
         count = 0
         for m in os.listdir(mypath):
             if (len(m) == 24):
                 recogniseImg = cv2.imread(mypath + m, 0)
-                recogniseImg = mat(recogniseImg)[self.gap_size + shift_x:self.gap_size + shift_x + self.Height,
-                               self.gap_size + shift_y: self.gap_size + shift_y + self.Width]
+                recogniseImg = mat(recogniseImg)[
+                               self.gap_size + shift_vertical:self.gap_size + shift_vertical + self.Height,
+                               self.gap_size + shift_horizonal: self.gap_size + shift_horizonal + self.Width]
                 ImgGradient = self.cal_Gradient(mat(recogniseImg))
                 # recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
                 # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
@@ -376,6 +410,7 @@ class LBP_Implement(object):
                 id = int(m[5:7])
                 imageGradient = self.cal_Gradient(mat(image))
                 # image = self.gamma_correction(image, self.gamma)
+                # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
                 # image = cv2.equalizeHist(image)
                 imageLBP = self.LBP(mat(image).flatten().T)
                 histogram = self.calHistogram(imageLBP, imageGradient)
@@ -429,9 +464,9 @@ class LBP_Implement(object):
                 if ((temp[j] <= end) and (temp[j] > start)):
                     temp[j] = weight_standard[t]
             start = end
-        weights = temp
-        # weights = temp.reshape(my_rows, my_columns)
-        return weights
+        self.weights = temp
+        print(self.weights.reshape(my_rows, my_columns))
+        return self.weights
 
     # Try to use Adaboost to calculate nonlinear weights and select features
     # This function calculate the Chi square distance between two corresponding regions
@@ -511,4 +546,5 @@ class LBP_Implement(object):
         extra.to_csv('extra.csv', sep=',', index=False)
         from FeatureSelection import feature_Select
         fs = feature_Select(intra_distance, extra_distance, intra_y, extra_y)
+        self.weights = fs
         return fs

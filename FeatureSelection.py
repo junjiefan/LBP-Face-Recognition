@@ -9,6 +9,7 @@ import pandas as pd
 
 
 def feature_Select(x1, x2, y1, y2):
+    regions = 121
     importance = np.array([0.0 for i in range(np.shape(x1)[1])])
     extra = np.concatenate((x2, y2.reshape(np.shape(y2)[0], 1)), axis=1)
     extra = pd.DataFrame(extra)
@@ -18,8 +19,8 @@ def feature_Select(x1, x2, y1, y2):
         sample = extra.sample(frac=0.2, replace=False)
         sample = np.array(sample)
         # print(np.shape(sample))
-        X = np.concatenate((x1, sample[:, 0:49]))
-        y = np.concatenate((y1, sample[:, 49]))
+        X = np.concatenate((x1, sample[:, 0:regions]))
+        y = np.concatenate((y1, sample[:, regions]))
         normalized_X = preprocessing.normalize(X)
         X_train, X_test, y_train, y_test = train_test_split(normalized_X, y, test_size=0.25, random_state=111)
         print('Adaboost')
@@ -56,7 +57,7 @@ def feature_Select(x1, x2, y1, y2):
         # y_pred = rf.predict(X_test)
         # print(confusion_matrix(y_test, y_pred))
     importance = np.around(importance / 5, decimals=5)
-    temp = importance.reshape(8, 8)
+    temp = importance.reshape(11, 11)
     H, W = np.shape(temp)
     adjust = int(W / 2)
     for row in range(H):
@@ -70,9 +71,9 @@ def feature_Select(x1, x2, y1, y2):
     weight_standard = [0, 1, 2, 4]
     start = -1
     for t in range(4):
-        index = int(49 * thresholds[t]) - 1
+        index = int(regions * thresholds[t]) - 1
         end = sorted_weights[index]
-        for j in range(49):
+        for j in range(regions):
             if ((temp[j] <= end) and (temp[j] > start)):
                 temp[j] = weight_standard[t]
         start = end
