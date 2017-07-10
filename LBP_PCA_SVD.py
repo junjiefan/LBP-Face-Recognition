@@ -6,7 +6,7 @@ import time
 from functools import wraps
 
 
-class LBP_PCA(object):
+class LBP_PCA_SVD(object):
     # R: the radius, P: the number of sampling points, type: original LBP or circular LBP operator
     # uniform: uniform patterns, devided into w_num * h_num regions
     # overlap_ratio: the ratio of overlapping regions
@@ -57,10 +57,9 @@ class LBP_PCA(object):
 
     # Load all image
     def loadImages(self, image_num, mypath, shift_vertical, shift_horizonal):
-        FaceMat = np.mat(np.zeros((image_num,
-                                   self.Width * self.Height)))
+        FaceMat = np.mat(np.zeros((self.Width * self.Height, image_num)))
         ids = [0 for i in range(image_num)]
-        gradients = np.mat(np.zeros((image_num, self.Width * self.Height)))
+        gradients = np.mat(np.zeros((self.Width * self.Height, image_num)))
         j = 0
         for m in os.listdir(mypath):
             if (len(m) == 24):
@@ -70,11 +69,11 @@ class LBP_PCA(object):
                     img = np.mat(img)[
                           self.gap_size + shift_vertical:self.gap_size + shift_vertical + self.Height,
                           self.gap_size + shift_horizonal: self.gap_size + shift_horizonal + self.Width]
-                    gradients[j, :] = self.cal_Gradient(np.mat(img))
+                    gradients[:, j] = self.cal_Gradient(np.mat(img))
                     # img = self.gamma_correction(img, self.gamma)
                     # img = cv2.GaussianBlur(img, (3, 3), 0)
                     # img = cv2.equalizeHist(img)
-                    FaceMat[j, :] = np.mat(img).flatten()
+                    FaceMat[:, j] = np.mat(img).flatten().T
                     j = j + 1
                 except:
                     print('Load %s failed' % m)
@@ -109,8 +108,8 @@ class LBP_PCA(object):
         else:
             pi = math.pi
         LBPoperator = np.mat(np.zeros(np.shape(FaceMat)))
-        for i in range(np.shape(FaceMat)[0]):  # obtain the number of images
-            face = FaceMat[i, :].reshape(self.Height, self.Width)  # Height represents the number of row
+        for i in range(np.shape(FaceMat)[1]):  # obtain the number of images
+            face = FaceMat[:, i].reshape(self.Height, self.Width)  # Height represents the number of row
             H, W = np.shape(face)
             tempface = np.mat(np.zeros((H, W)))
             for h in range(R, H - R):
@@ -147,7 +146,7 @@ class LBP_PCA(object):
                             tempface[h, w] = self.Points + 1
                     else:
                         tempface[h, w] = int(repixel, base=2)
-            LBPoperator[i, :] = tempface.flatten()
+            LBPoperator[:, i] = tempface.flatten().T
         return LBPoperator
 
     # Utilize Sobel operator calculate image gradients.
@@ -166,7 +165,7 @@ class LBP_PCA(object):
                 for j in range(W):
                     # res[i, j] = around(math.log(100 * res[i, j] + 1), decimals=4)
                     res[i, j] = np.around(math.exp(self.exp_para * res[i, j]) - 1, decimals=4)
-        res = res.flatten().reshape(1, self.Width * self.Height)
+        res = res.flatten().reshape(self.Width * self.Height, 1)
         return res
 
     # Calculate the number of transitions in the binary pattern and judge whether it is a uniform pattern
@@ -274,7 +273,7 @@ class LBP_PCA(object):
                                         hist[k] += 1
                     Histogram[:, count] = np.mat(hist).flatten().T
                     count += 1
-        return Histogram.flatten()
+        return Histogram.flatten().T
 
     # Use Gaussian to gain weights for each pixel, the weight is depend on its location
     def Gaussain2D(self, h1, w1, h2, w2, sigma):
@@ -313,6 +312,7 @@ class LBP_PCA(object):
     def zeroMean(self, dataMat):
         meanVal = np.mean(dataMat, axis=0)  # axis = 0, calculate the mean of each column
         newData = dataMat - meanVal
+        print(np.shape(newData))
         return newData, meanVal
 
     # According to the percentage, calculate the 'n'
@@ -330,17 +330,21 @@ class LBP_PCA(object):
                 return num
 
     def pca(self, dataMat, percentage=0.9999):
+        dataMat = dataMat.T # Each row is an image
         newData, meanVal = self.zeroMean(dataMat)
-        covMat = np.cov(newData, rowvar=0)  # covariance matrix, rowvar = 0, represents each row is a sample
+        covMat = np.cov(newData, rowvar=0)
         eigVals, eigVects = np.linalg.eig(np.mat(covMat))
         # n = self.percentage_pca(eigVals, percentage)  # calculate 'n'
-        n = 200
+        n = 20
         eigValIndice = np.argsort(eigVals)
         n_eigValIndice = eigValIndice[-1:-(n + 1):-1]
         n_eigVect = eigVects[:, n_eigValIndice]  # obtain 'n' eigen vector
-        lowDDataMat = newData * n_eigVect  # low dimensional data matrix
-        reconMat = (lowDDataMat * n_eigVect.T) + meanVal  # the reconstructed data matrix
-        return lowDDataMat, reconMat
+        print(np.shape(n_eigVect))
+        # lowDDataMat = n_eigVect.T * newData  # low dimensional data matrix
+        lowDataMat = newData * n_eigVect
+        print(np.shape(lowDataMat))
+        # reconMat = (lowDDataMat * n_eigVect.T) + meanVal  # the reconstructed data matrix
+        return lowDataMat
 
     def percentage_svd(self, sigma, percentage):
         arraySum = np.sum(sigma) * percentage
@@ -350,14 +354,15 @@ class LBP_PCA(object):
             tmpSum += i
             num += 1
             if tmpSum >= arraySum:
+                print(tmpSum)
                 return num
 
     def svd(self, dataMat, percentage=0.5):
         U, sigma, V = np.linalg.svd(dataMat)
-        n = self.percentage_svd(sigma,percentage)
-        print(n)
-        reconData = np.matrix(U[:, :n]) * np.diag(sigma[:n]) * np.matrix(V[:n, :])
-        print(np.shape(reconData))
+        print(sigma)
+        # n = self.percentage_svd(sigma, percentage)
+        # reconData = np.matrix(U[:, :n]) * np.diag(sigma[:n]) * np.matrix(V[:n, :])
+        # print(np.shape(reconData))
 
     @fn_timer
     def run_LBP(self, path, isgradient, exp_para, sigma):
@@ -374,18 +379,19 @@ class LBP_PCA(object):
         # Calculate histograms
         self.Histograms = self.createHist(self.Image_Num)
         for i in range(self.Image_Num):
-            Histogram = self.calHistogram(self.LBPoperator[i, :], self.gradients[i, :])
-            self.Histograms[i, :] = Histogram
-        # lowData, reconData = self.pca(self.Histograms)
+            Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
+            self.Histograms[:, i] = Histogram
+        lowData = self.pca(self.Histograms)
+        return lowData
         # self.lowHistograms = lowData
-        reconData = self.svd(self.Histograms)
+        # reconData = self.svd(self.Histograms)
 
     def createHist(self, image_num):
         if self.overlap_ratio > 0:
             Histograms = np.mat(
-                np.zeros((image_num, self.Patterns * self.region_w_num * self.region_h_num)))
+                np.zeros((self.Patterns * self.region_w_num * self.region_h_num, image_num)))
         else:
-            Histograms = np.mat(np.zeros((image_num, self.Patterns * self.w_num * self.h_num)))
+            Histograms = np.mat(np.zeros((self.Patterns * self.w_num * self.h_num, image_num)))
         return Histograms
 
     # recogniseImg: the image needed to be matched
@@ -395,18 +401,18 @@ class LBP_PCA(object):
         recog_ope = self.LBP(recog_images)
         recog_hists = self.createHist(recog_num)
         for i in range(recog_num):
-            hist = self.calHistogram(recog_ope[i, :], recog_gradients[i, :])
-            recog_hists[i, :] = hist
-        recog_low_hists, reconData = self.pca(recog_hists)
+            hist = self.calHistogram(recog_ope[:, i], recog_gradients[:, i])
+            recog_hists[:, i] = hist
+        # recog_low_hists, reconData = self.pca(recog_hists)
         for r in range(recog_num):
             minIndex = 0
             minVals = np.inf
-            # recog_hist = recog_hists[r,:]
-            recog_hist = recog_low_hists[r, :]
+            recog_hist = recog_hists[:, r]
+            # recog_hist = recog_low_hists[, r]
             # Find the most close one, the smallest difference
-            for i in range(np.shape(self.LBPoperator)[0]):
-                # Histogram = self.Histograms[i, :]
-                Histogram = self.lowHistograms[i, :]
+            for i in range(np.shape(self.LBPoperator)[1]):
+                Histogram = self.Histograms[:, i]
+                # Histogram = self.lowHistograms[:, i]
                 # Utilize Chi square distance to find the most close match
                 if (len(weights) == 0):
                     distance = abs(((np.array(Histogram - recog_hist) ** 2).sum()) / (
@@ -431,7 +437,9 @@ class LBP_PCA(object):
 
         # Calculate the recognition rate
 
-    def calculate_Accuracy(self, mypath, shift_vertical, shift_horizonal):
+    def calculate_Accuracy(self, mypath):
+        shift_vertical = 0
+        shift_horizonal = 0
         # mypath = '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/'
         # shift_vertical = self.shift_vertical
         recog_num = len([file for file in os.listdir(mypath)
