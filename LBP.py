@@ -5,7 +5,7 @@ import pandas as pd
 from FeatureSelection import feature_Select
 import cv2
 import multiprocessing as mp
-from LBP_PCA_SVD import LBP_PCA
+from PCA_SVD import LBP_PCA_SVD
 
 if __name__ == '__main__':
     R = 1
@@ -45,13 +45,9 @@ if __name__ == '__main__':
     #         set_3[i,j]=obj.calculate_Accuracy(paths[2],shift_vertical[i],shift_horizon[j])
     #     print(set_3[i,:])
 
-    # obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio, gap_size)
-    # obj.run_LBP(paths[0], isgradiented, exp_para, sigma)
-    # for i in range(2,6):
-    #     acc = obj.calculate_Accuracy(paths[i],0,0)
-    #     print('Accuracy: %10.3f'%acc)
-    path = 'F:/dissertation/Test/'
-    lp = LBP_PCA(R, P, type, uniform, w_num, h_num, overlap_ratio, gap_size)
-    lp.run_LBP(path, isgradiented, exp_para, sigma)
-    # acc = lp.calculate_Accuracy(paths[0], 0, 0)
-    # print('Accuracy: %10.3f' % acc)
+    obj = LBP_Implement(R, P, type, uniform, w_num, h_num, overlap_ratio, gap_size)
+    obj.run_LBP(paths[0], isgradiented, exp_para, sigma)
+    for i in range(2,6):
+        acc = obj.calculate_Accuracy(paths[i],0,0)
+        print('Accuracy: %10.3f'%acc)
+

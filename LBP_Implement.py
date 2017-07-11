@@ -1,6 +1,6 @@
 import os
 import math
-from numpy import *
+import numpy as np
 import cv2
 import time
 from functools import wraps
@@ -56,37 +56,40 @@ class LBP_Implement(object):
         return function_timer
 
     # Load all image
-    def loadImages(self, mypath):
-        FaceMat = mat(zeros((self.Image_Num,
-                             self.Width * self.Height)))
+    def loadImages(self, image_num, mypath, shift_vertical, shift_horizonal):
+        FaceMat = np.mat(np.zeros((self.Width * self.Height, image_num)))
+        ids = [0 for i in range(image_num)]
+        gradients = np.mat(np.zeros((self.Width * self.Height, image_num)))
         j = 0
         for m in os.listdir(mypath):
             if (len(m) == 24):
                 try:
                     img = cv2.imread(mypath + m, 0)
-                    self.ids[j] = int(m[5:7])
-                    img = mat(img)[self.gap_size:self.Height + self.gap_size, self.gap_size:self.gap_size + self.Width]
-                    self.gradients[:, j] = self.cal_Gradient(mat(img))
+                    ids[j] = int(m[5:7])
+                    img = np.mat(img)[
+                          self.gap_size + shift_vertical:self.gap_size + shift_vertical + self.Height,
+                          self.gap_size + shift_horizonal: self.gap_size + shift_horizonal + self.Width]
+                    gradients[:, j] = self.cal_Gradient(np.mat(img))
                     # img = self.gamma_correction(img, self.gamma)
                     # img = cv2.GaussianBlur(img, (3, 3), 0)
                     # img = cv2.equalizeHist(img)
-                    FaceMat[j, :] = mat(img).flatten()
+                    FaceMat[:, j] = np.mat(img).flatten().T
                     j = j + 1
                 except:
                     print('Load %s failed' % m)
         print('Successfully loaded %s images' % j)
-        return FaceMat  # Rotate the binary string and obtain a minimal binary number for each pattern
+        return ids, FaceMat, gradients
 
     def gamma_correction(self, img, correction):
         img = img / 255.0
         img = cv2.pow(img, correction)
-        return uint8(img * 255)
+        return np.uint8(img * 255)
 
     # Start from the end of the binary string, remove all '0' at the end and place them in the begining.
     def minBinary(self, pixel):
         length = len(pixel)
         last = length - 1
-        result = inf
+        result = np.inf
         for i in range(length):
             p = pixel[last]
             pixel = p + pixel[:last]
@@ -104,11 +107,11 @@ class LBP_Implement(object):
             Neighbor_w = [-1, -1, -1, 0, 1, 1, 1, 0]
         else:
             pi = math.pi
-        LBPoperator = mat(zeros(shape(FaceMat)))
-        for i in range(shape(FaceMat)[1]):  # obtain the number of images
+        LBPoperator = np.mat(np.zeros(np.shape(FaceMat)))
+        for i in range(np.shape(FaceMat)[1]):  # obtain the number of images
             face = FaceMat[:, i].reshape(self.Height, self.Width)  # Height represents the number of row
-            H, W = shape(face)
-            tempface = mat(zeros((H, W)))
+            H, W = np.shape(face)
+            tempface = np.mat(np.zeros((H, W)))
             for h in range(R, H - R):
                 for w in range(R, W - R):
                     repixel = ''
@@ -126,8 +129,8 @@ class LBP_Implement(object):
                     else:
                         for p in [3, 4, 5, 6, 7, 0, 1, 2]:
                             p = float(p)
-                            hp = h + R * cos(2 * pi * (p / self.Points))
-                            wp = w - R * sin(2 * pi * (p / self.Points))
+                            hp = h + R * np.cos(2 * pi * (p / self.Points))
+                            wp = w - R * np.sin(2 * pi * (p / self.Points))
                             neighbor_pixel = self.bilinear_interpolation(face, hp, wp)
                             if neighbor_pixel > pixel:
                                 repixel += '1'
@@ -151,19 +154,20 @@ class LBP_Implement(object):
     def cal_Gradient(self, face):
         x64 = cv2.Sobel(face, cv2.CV_64F, 1, 0, ksize=5)
         y64 = cv2.Sobel(face, cv2.CV_64F, 0, 1, ksize=5)
-        sobelx = uint8(absolute(x64))
-        sobely = uint8(absolute(y64))
+        sobelx = np.uint8(np.absolute(x64))
+        sobely = np.uint8(np.absolute(y64))
         res = cv2.addWeighted(sobelx, 0.5, sobely, 0.5, 0)
         row_sums = res.sum(axis=1)
-        res = around(res / row_sums[:, newaxis], decimals=4)
+        res = np.around(res / row_sums[:, np.newaxis], decimals=4)
         if self.exp_para != 0:
-            H, W = shape(res)
+            H, W = np.shape(res)
             for i in range(H):
                 for j in range(W):
                     # res[i, j] = around(math.log(100 * res[i, j] + 1), decimals=4)
-                    res[i, j] = around(math.exp(self.exp_para * res[i, j]) - 1, decimals=4)
-        res = res.flatten().T.reshape(self.Width * self.Height, 1)
+                    res[i, j] = np.around(math.exp(self.exp_para * res[i, j]) - 1, decimals=4)
+        res = res.flatten().reshape(self.Width * self.Height, 1)
         return res
+
 
     # Calculate the number of transitions in the binary pattern and judge whether it is a uniform pattern
     def transition_number(self, pattern):
@@ -202,7 +206,7 @@ class LBP_Implement(object):
         mask_height, mask_width = int(self.Height / self.h_num), int(self.Width / self.w_num)
         # Divide the image into local regions
         if self.overlap_ratio > 0:
-            Histogram = mat(zeros((self.Patterns, self.region_w_num * self.region_h_num)))
+            Histogram = np.mat(np.zeros((self.Patterns, self.region_w_num * self.region_h_num)))
             count = 0
             for i in range(self.region_h_num):
                 for j in range(self.region_w_num):
@@ -233,7 +237,7 @@ class LBP_Implement(object):
                             h2 = self.Height - 1
                             w1 = self.Width - mask_width - 1
                             w2 = self.Width - 1
-                    gaus = self.Gaussain_Border(h1, w1, h2, w2, self.sigma)
+                    # gaus = self.Gaussain_Border(h1, w1, h2, w2, self.sigma)
                     hist = [0.0] * self.Patterns
                     for c in range(h1, h2):
                         for r in range(w1, w2):
@@ -243,11 +247,11 @@ class LBP_Implement(object):
                                     if self.isgradiented == 1:
                                         hist[k] += gradients[c, r]
                                     else:
-                                        hist[k] += 1 * gaus[c - h1, r - w1]
-                    Histogram[:, count] = mat(hist).flatten().T
+                                        hist[k] += 1
+                    Histogram[:, count] = np.mat(hist).flatten().T
                     count += 1
         else:
-            Histogram = mat(zeros((self.Patterns, self.w_num * self.h_num)))
+            Histogram = np.mat(np.zeros((self.Patterns, self.w_num * self.h_num)))
             # print(shape(Histogram))
             count = 0
             for i in range(self.h_num):
@@ -268,7 +272,7 @@ class LBP_Implement(object):
                                     else:
                                         # hist[k] += 1 * gaus[c - h1, r - w1]
                                         hist[k] += 1
-                    Histogram[:, count] = mat(hist).flatten().T
+                    Histogram[:, count] = np.mat(hist).flatten().T
                     count += 1
         return Histogram.flatten().T
 
@@ -276,34 +280,34 @@ class LBP_Implement(object):
     def Gaussain2D(self, h1, w1, h2, w2, sigma):
         x0 = int((w1 + w2) / 2)
         y0 = int((h1 + h2) / 2)
-        x = linspace(w1, w2 - 1, (w2 - w1))
-        y = linspace(h1, h2 - 1, (h2 - h1))
-        x, y = meshgrid(x, y)
-        gaus = exp(-(((x - x0) ** 2 + (y - y0) ** 2) / (2 * (sigma ** 2))))
+        x = np.linspace(w1, w2 - 1, (w2 - w1))
+        y = np.linspace(h1, h2 - 1, (h2 - h1))
+        x, y = np.meshgrid(x, y)
+        gaus = np.exp(-(((x - x0) ** 2 + (y - y0) ** 2) / (2 * (sigma ** 2))))
         return gaus
 
     def Gaussain_Border(self, h1, w1, h2, w2, sigma):
         xc = int((w1 + w2) / 2)
         yc = int((h1 + h2) / 2)
-        x = linspace(w1, xc - 1, (xc - w1))
-        y = linspace(h1, yc - 1, (yc - h1))
-        x, y = meshgrid(x, y)
-        gaus_1 = exp(-(((x - w1) ** 2 + (y - h1) ** 2) / (2 * (sigma ** 2))))
-        x = linspace(xc, w2 - 1, (w2 - xc))
-        y = linspace(h1, yc - 1, (yc - h1))
-        x, y = meshgrid(x, y)
-        gaus_2 = exp(-(((x - w2 + 1) ** 2 + (y - h1) ** 2) / (2 * (sigma ** 2))))
-        x = linspace(w1, xc - 1, (xc - w1))
-        y = linspace(yc, h2 - 1, (h2 - yc))
-        x, y = meshgrid(x, y)
-        gaus_3 = exp(-(((x - w1) ** 2 + (y - h2 + 1) ** 2) / (2 * (sigma ** 2))))
-        x = linspace(xc, w2 - 1, (w2 - xc))
-        y = linspace(yc, h2 - 1, (h2 - yc))
-        x, y = meshgrid(x, y)
-        gaus_4 = exp(-(((x - w2 + 1) ** 2 + (y - h2 + 1) ** 2) / (2 * (sigma ** 2))))
-        t1 = concatenate((gaus_1, gaus_2), axis=1)
-        t2 = concatenate((gaus_3, gaus_4), axis=1)
-        gaus = 1 - concatenate((t1, t2))
+        x = np.linspace(w1, xc - 1, (xc - w1))
+        y = np.linspace(h1, yc - 1, (yc - h1))
+        x, y = np.meshgrid(x, y)
+        gaus_1 = np.exp(-(((x - w1) ** 2 + (y - h1) ** 2) / (2 * (sigma ** 2))))
+        x = np.linspace(xc, w2 - 1, (w2 - xc))
+        y = np.linspace(h1, yc - 1, (yc - h1))
+        x, y = np.meshgrid(x, y)
+        gaus_2 = np.exp(-(((x - w2 + 1) ** 2 + (y - h1) ** 2) / (2 * (sigma ** 2))))
+        x = np.linspace(w1, xc - 1, (xc - w1))
+        y = np.linspace(yc, h2 - 1, (h2 - yc))
+        x, y = np.meshgrid(x, y)
+        gaus_3 = np.exp(-(((x - w1) ** 2 + (y - h2 + 1) ** 2) / (2 * (sigma ** 2))))
+        x = np.linspace(xc, w2 - 1, (w2 - xc))
+        y = np.linspace(yc, h2 - 1, (h2 - yc))
+        x, y = np.meshgrid(x, y)
+        gaus_4 = np.exp(-(((x - w2 + 1) ** 2 + (y - h2 + 1) ** 2) / (2 * (sigma ** 2))))
+        t1 = np.concatenate((gaus_1, gaus_2), axis=1)
+        t2 = np.concatenate((gaus_3, gaus_4), axis=1)
+        gaus = 1 - np.concatenate((t1, t2))
         return gaus
 
     @fn_timer
@@ -313,81 +317,80 @@ class LBP_Implement(object):
         self.sigma = sigma
         self.Image_Num = len([file for file in os.listdir(path)
                               if os.path.isfile(os.path.join(path, file))])
-        self.ids = [0 for i in range(self.Image_Num)]
-        self.gradients = mat(zeros((self.Width * self.Height, self.Image_Num)))
         # Load images
-        FaceMat = self.loadImages(path).T
+        self.ids, FaceMat, self.gradients = self.loadImages(self.Image_Num, path, 0, 0)
         # Calculate LBP opearters for all loaded images
         self.LBPoperator = self.LBP(FaceMat)
         # Calculate histograms
-        if self.overlap_ratio > 0:
-            self.Histograms = mat(
-                zeros((self.Patterns * self.region_w_num * self.region_h_num, shape(self.LBPoperator)[1])))
-        else:
-            self.Histograms = mat(zeros((self.Patterns * self.w_num * self.h_num, shape(self.LBPoperator)[1])))
-        for i in range(shape(self.LBPoperator)[1]):
+        self.Histograms = self.createHist(self.Image_Num)
+        for i in range(self.Image_Num):
             Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
             self.Histograms[:, i] = Histogram
+        return self.Histograms.flatten()
 
-    # recogniseImg: the image needed to be matched
-    def recogniseFace(self, recogniseImg, weights, ImgGradient):
-        recogniseImg = recogniseImg.T
-        ImgLBPope = self.LBP(recogniseImg)
-        recogniseHistogram = self.calHistogram(ImgLBPope, ImgGradient)
-        minIndex = 0
-        minVals = inf
-        # Find the most close one, the smallest difference
-        for i in range(shape(self.LBPoperator)[1]):
-            Histogram = self.Histograms[:, i]
-            # Utilize Chi square distance to find the most close match
-            if (len(weights) == 0):
-                distance = ((array(Histogram - recogniseHistogram) ** 2).sum()) / (
-                    (array(Histogram + recogniseHistogram)).sum())
-            else:
-                if (self.overlap_ratio == 0):
-                    regions = self.h_num * self.w_num
+    def createHist(self, image_num):
+        if self.overlap_ratio > 0:
+            Histograms = np.mat(
+                np.zeros((self.Patterns * self.region_w_num * self.region_h_num, image_num)))
+        else:
+            Histograms = np.mat(np.zeros((self.Patterns * self.w_num * self.h_num, image_num)))
+        return Histograms
+
+        # recogniseImg: the image needed to be matched
+
+    def recogniseFace(self, recog_num, recog_images, recog_gradients):
+        weights = self.weights
+        recog_ids = [0 for i in range(recog_num)]
+        recog_ope = self.LBP(recog_images)
+        recog_hists = self.createHist(recog_num)
+        for i in range(recog_num):
+            hist = self.calHistogram(recog_ope[:, i], recog_gradients[:, i])
+            recog_hists[:, i] = hist
+        for r in range(recog_num):
+            minIndex = 0
+            minVals = np.inf
+            recog_hist = recog_hists[:, r]
+            # Find the most close one, the smallest difference
+            for i in range(np.shape(self.LBPoperator)[1]):
+                Histogram = self.Histograms[:, i]
+                # Utilize Chi square distance to find the most close match
+                if (len(weights) == 0):
+                    distance = ((np.array(Histogram - recog_hist) ** 2).sum()) / (
+                        (np.array(Histogram + recog_hist)).sum())
                 else:
-                    regions = self.region_h_num * self.region_w_num
-                Histogram = Histogram.reshape(self.Patterns, regions)
-                recogniseHistogram = recogniseHistogram.reshape(self.Patterns, regions)
-                distance = 0
-                for index in range(regions):
-                    distance += (((array(Histogram[:, index] - recogniseHistogram[:, index])) ** 2).sum() / (
-                        array(Histogram[:, index] + recogniseHistogram[:, index])).sum()) * weights[index]
-
-            if distance < minVals:
-                minIndex = i
-                minVals = distance
-        return minIndex
+                    if (self.overlap_ratio == 0):
+                        regions = self.h_num * self.w_num
+                    else:
+                        regions = self.region_h_num * self.region_w_num
+                    Histogram = Histogram.reshape(self.Patterns, regions)
+                    recog_hist = recog_hist.reshape(self.Patterns, regions)
+                    distance = 0
+                    for index in range(regions):
+                        distance += (((np.array(Histogram[:, index] - recog_hist[:, index])) ** 2).sum() / (
+                            np.array(Histogram[:, index] + recog_hist[:, index])).sum()) * weights[index]
+                    distance = abs(distance)
+                if distance < minVals:
+                    minIndex = i
+                    minVals = distance
+            recog_ids[r] = self.ids[minIndex]
+        return recog_ids
 
         # Calculate the recognition rate
 
-    def calculate_Accuracy(self, mypath, shift_vertical, shift_horizonal):
+    def calculate_Accuracy(self, mypath,shift_vertical,shift_horizonal):
+        shift_vertical = 0
+        shift_horizonal = 0
         # mypath = '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/'
         # shift_vertical = self.shift_vertical
-        weights = self.weights
-        j = 0
+        recog_num = len([file for file in os.listdir(mypath)
+                         if os.path.isfile(os.path.join(mypath, file))])
+        recog_ids, recog_faces, recog_gradients = self.loadImages(recog_num, mypath, shift_vertical, shift_horizonal)
+        ids = self.recogniseFace(recog_num, recog_faces, recog_gradients)
         count = 0
-        for m in os.listdir(mypath):
-            if (len(m) == 24):
-                recogniseImg = cv2.imread(mypath + m, 0)
-                recogniseImg = mat(recogniseImg)[
-                               self.gap_size + shift_vertical:self.gap_size + shift_vertical + self.Height,
-                               self.gap_size + shift_horizonal: self.gap_size + shift_horizonal + self.Width]
-                ImgGradient = self.cal_Gradient(mat(recogniseImg))
-                # recogniseImg = self.gamma_correction(recogniseImg, self.gamma)
-                # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
-                # recogniseImg = cv2.equalizeHist(recogniseImg)
-                id = int(m[5:7])
-                index = self.recogniseFace(mat(recogniseImg).flatten(), weights, ImgGradient)
-                if self.ids[index] == id:
-                    count = count + 1
-                j = j + 1
-        if j > 0:
-            accuracy = float(count) / j
-            return accuracy
-        else:
-            return 0
+        for i in range(recog_num):
+            if ids[i] == recog_ids[i]:
+                count += 1
+        return float(count) / recog_num
 
     # This is a linear function to calculate weight for each region
     @fn_timer
@@ -401,18 +404,18 @@ class LBP_Implement(object):
             my_rows = self.region_h_num
             my_columns = self.region_w_num
 
-        weights = mat(zeros((image_num, my_rows * my_columns)))
-        rows, columns = shape(weights)
+        weights = np.mat(np.zeros((image_num, my_rows * my_columns)))
+        rows, columns = np.shape(weights)
         count = 0
         for m in os.listdir(mypath):
             if (len(m) == 24):
                 image = cv2.imread(mypath + m, 0)
                 id = int(m[5:7])
-                imageGradient = self.cal_Gradient(mat(image))
+                imageGradient = self.cal_Gradient(np.mat(image))
                 # image = self.gamma_correction(image, self.gamma)
                 # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
                 # image = cv2.equalizeHist(image)
-                imageLBP = self.LBP(mat(image).flatten().T)
+                imageLBP = self.LBP(np.mat(image).flatten().T)
                 histogram = self.calHistogram(imageLBP, imageGradient)
                 histogram = histogram.reshape(self.Patterns, columns)
                 temp = [0] * columns
@@ -420,13 +423,13 @@ class LBP_Implement(object):
                     # calculate the recognition rate for each region
                     local_region = histogram[:, i]
                     min_index = 0
-                    min_value = inf
+                    min_value = np.inf
                     for j in range(self.Image_Num):
                         stored_hist = self.Histograms[:, j]
                         stored_hist = stored_hist.reshape(self.Patterns, columns)
                         stored_region = stored_hist[:, i]
-                        para1 = (array(local_region - stored_region) ** 2).sum()
-                        para2 = (array(local_region + stored_region)).sum()
+                        para1 = (np.array(local_region - stored_region) ** 2).sum()
+                        para2 = (np.array(local_region + stored_region)).sum()
                         distance = para1 / para2
                         if (distance < min_value):
                             min_index = j
@@ -440,12 +443,12 @@ class LBP_Implement(object):
                 count += 1
 
         weights = weights.mean(axis=0)
-        temp = array([0.0] * columns)
+        temp = np.array([0.0] * columns)
         for n in range(columns):
             temp[n] = weights[0, n]
         temp = temp.reshape(my_rows, my_columns)
         # print(temp)
-        H, W = shape(temp)
+        H, W = np.shape(temp)
         adjust = int(W / 2)
         for row in range(H):
             for col in range(adjust):
@@ -483,10 +486,10 @@ class LBP_Implement(object):
             my_rows = self.region_h_num
             my_columns = self.region_w_num
         region_num = my_rows * my_columns
-        intra_distance = mat(zeros((intra_num, region_num)))
-        intra_y = array([1 for i in range(intra_num)])
-        extra_distance = mat(zeros((extra_num, region_num)))
-        extra_y = array([0 for i in range(extra_num)])
+        intra_distance = np.mat(np.zeros((intra_num, region_num)))
+        intra_y = np.array([1 for i in range(intra_num)])
+        extra_distance = np.mat(np.zeros((extra_num, region_num)))
+        extra_y = np.array([0 for i in range(extra_num)])
         extra_index = 0
         intra_index = 0
         # load images, intra-personal pairs and extra-personal pairs
@@ -500,8 +503,8 @@ class LBP_Implement(object):
                         # print('The image %s' % i)
                         img1 = cv2.imread(mypath + i, 0)
                         # img1 = self.gamma_correction(img1, self.gamma)
-                        lbp_op1 = self.LBP(mat(img1).flatten().T)
-                        img_gra1 = self.cal_Gradient(mat(img1))
+                        lbp_op1 = self.LBP(np.mat(img1).flatten().T)
+                        img_gra1 = self.cal_Gradient(np.mat(img1))
                         hist1 = self.calHistogram(lbp_op1, img_gra1)
                         hist1 = hist1.reshape(self.Patterns, region_num)
                         remain_cons = cons[(con_index + 1):]
@@ -514,15 +517,15 @@ class LBP_Implement(object):
                                 if (h2 == hori_angle) and (v2 in remain_cons):
                                     img2 = cv2.imread(mypath + j, 0)
                                     # img2 = self.gamma_correction(img2, self.gamma)
-                                    lbp_op2 = self.LBP(mat(img2).flatten().T)
-                                    img_gra2 = self.cal_Gradient(mat(img2))
+                                    lbp_op2 = self.LBP(np.mat(img2).flatten().T)
+                                    img_gra2 = self.cal_Gradient(np.mat(img2))
                                     hist2 = self.calHistogram(lbp_op2, img_gra2)
                                     hist2 = hist2.reshape(self.Patterns, region_num)
                                     for region_index in range(region_num):
                                         region_1 = hist1[:, region_index]
                                         region_2 = hist2[:, region_index]
-                                        para1 = (array(region_1 - region_2) ** 2).sum()
-                                        para2 = (array(region_1 + region_2)).sum()
+                                        para1 = (np.array(region_1 - region_2) ** 2).sum()
+                                        para2 = (np.array(region_1 + region_2)).sum()
                                         distance = para1 / para2
                                         if (id1 == id2):
                                             # two images belong to the same person
@@ -537,8 +540,8 @@ class LBP_Implement(object):
         # print(intra_distance[0:5,0:5])
         # print(extra_distance[0:5,0:5])
 
-        intra = concatenate((intra_distance, intra_y.reshape(shape(intra_y)[0], 1)), axis=1)
-        extra = concatenate((extra_distance, extra_y.reshape(shape(extra_y)[0], 1)), axis=1)
+        intra = np.concatenate((intra_distance, intra_y.reshape(np.shape(intra_y)[0], 1)), axis=1)
+        extra = np.concatenate((extra_distance, extra_y.reshape(np.shape(extra_y)[0], 1)), axis=1)
         import pandas as pd
         intra = pd.DataFrame(intra)
         intra.to_csv('intra.csv', sep=',', index=False)

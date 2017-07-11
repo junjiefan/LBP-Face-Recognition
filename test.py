@@ -18,6 +18,25 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import pandas as pd
 from numpy import *
 
+# paths = [''] * 15
+# for i in range(15):
+#     paths[i] = 'F:/dissertation/PCA/Test/' + str(i) + '/'
+#     os.makedirs(paths[i])
+
+path = 'F:/dissertation/Yale_images/Set_2/'
+for i in range(15):
+    destination = 'F:/dissertation/PCA/Test/' + str(i) + '/'
+    for m in os.listdir(path):
+        id = int(m[5:7])
+        if id ==i:
+            img = cv2.imread(path + m, 0)
+            cv2.imwrite(destination + m, img)
+
+
+
+
+
+
 ########################################################################################################################
 # def Gaussain2D( h1, w1, h2, w2, sigma):
 #     x0 = int((w1 + w2) / 2)
