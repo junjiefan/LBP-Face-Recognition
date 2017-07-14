@@ -10,7 +10,7 @@ class LBP_Implement(object):
     # R: the radius, P: the number of sampling points, type: original LBP or circular LBP operator
     # uniform: uniform patterns, devided into w_num * h_num regions
     # overlap_ratio: the ratio of overlapping regions
-    def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio, gap_size):
+    def __init__(self, R, P, type, uniform, w_num, h_num, overlap_ratio, gap_size, weights):
         self.Width = 168
         self.Height = 192
         self.Radius = R
@@ -22,19 +22,10 @@ class LBP_Implement(object):
         self.overlap_ratio = overlap_ratio
         self.gamma = 0.15
         self.gap_size = gap_size
-        self.weights = []
+        self.weights = weights
         if (self.gap_size > 0):
             self.Height = self.Height - self.gap_size * 2
             self.Width = self.Width - self.gap_size * 2
-        if (self.overlap_ratio > 0):
-            region_width = self.Width / self.w_num
-            region_height = self.Height / self.h_num
-            self.overlap_size = int(region_width * self.overlap_ratio)
-            print('Overlap_size: %d' % self.overlap_size)
-            self.region_w_num = 1 + math.ceil((self.Width - region_width) / (region_width - self.overlap_size))
-            self.region_h_num = 1 + math.ceil((self.Height - region_height) / (region_height - self.overlap_size))
-            # print(self.region_h_num)
-            # print(self.region_w_num)
         if (self.uniform == 1):
             self.Patterns = self.Points * (self.Points - 1) + 3
             # P*(P-1) for patterns with two transitions,
@@ -42,6 +33,17 @@ class LBP_Implement(object):
             # 1 bin for all miscellaneous patterns
         else:
             self.Patterns = 2 ** self.Points
+        self.dimension = self.w_num * self.h_num * self.Patterns
+        if (self.overlap_ratio > 0):
+            region_width = self.Width / self.w_num
+            region_height = self.Height / self.h_num
+            self.overlap_size = int(region_width * self.overlap_ratio)
+            print('Overlap_size: %d' % self.overlap_size)
+            self.region_w_num = 1 + math.ceil((self.Width - region_width) / (region_width - self.overlap_size))
+            self.region_h_num = 1 + math.ceil((self.Height - region_height) / (region_height - self.overlap_size))
+            self.dimension = self.region_w_num * self.region_h_num * self.Patterns
+        self.dimension = self.dimension - (len(self.weights) - np.count_nonzero(self.weights)) * self.Patterns
+        print(self.dimension)
 
     # Used for calculating consumed time
     def fn_timer(function):
@@ -70,14 +72,14 @@ class LBP_Implement(object):
                           self.gap_size + shift_vertical:self.gap_size + shift_vertical + self.Height,
                           self.gap_size + shift_horizonal: self.gap_size + shift_horizonal + self.Width]
                     gradients[:, j] = self.cal_Gradient(np.mat(img))
-                    # img = self.gamma_correction(img, self.gamma)
+                    img = self.gamma_correction(img, self.gamma)
                     # img = cv2.GaussianBlur(img, (3, 3), 0)
-                    # img = cv2.equalizeHist(img)
+                    img = cv2.equalizeHist(img)
                     FaceMat[:, j] = np.mat(img).flatten().T
                     j = j + 1
                 except:
                     print('Load %s failed' % m)
-        print('Successfully loaded %s images' % j)
+        # print('Successfully loaded %s images' % j)
         return ids, FaceMat, gradients
 
     def gamma_correction(self, img, correction):
@@ -158,6 +160,7 @@ class LBP_Implement(object):
         sobely = np.uint8(np.absolute(y64))
         res = cv2.addWeighted(sobelx, 0.5, sobely, 0.5, 0)
         row_sums = res.sum(axis=1)
+        # np.seterr(divide='ignore', invalid='ignore')
         res = np.around(res / row_sums[:, np.newaxis], decimals=4)
         if self.exp_para != 0:
             H, W = np.shape(res)
@@ -167,7 +170,6 @@ class LBP_Implement(object):
                     res[i, j] = np.around(math.exp(self.exp_para * res[i, j]) - 1, decimals=4)
         res = res.flatten().reshape(self.Width * self.Height, 1)
         return res
-
 
     # Calculate the number of transitions in the binary pattern and judge whether it is a uniform pattern
     def transition_number(self, pattern):
@@ -237,7 +239,7 @@ class LBP_Implement(object):
                             h2 = self.Height - 1
                             w1 = self.Width - mask_width - 1
                             w2 = self.Width - 1
-                    # gaus = self.Gaussain_Border(h1, w1, h2, w2, self.sigma)
+                    gaus = self.Gaussain2D(h1, w1, h2, w2, self.sigma)
                     hist = [0.0] * self.Patterns
                     for c in range(h1, h2):
                         for r in range(w1, w2):
@@ -245,7 +247,7 @@ class LBP_Implement(object):
                             for k in range(self.Patterns):
                                 if pattern == patterns[k]:
                                     if self.isgradiented == 1:
-                                        hist[k] += gradients[c, r]
+                                        hist[k] += gradients[c, r] * gaus[c - h1, r - w1]
                                     else:
                                         hist[k] += 1
                     Histogram[:, count] = np.mat(hist).flatten().T
@@ -310,7 +312,7 @@ class LBP_Implement(object):
         gaus = 1 - np.concatenate((t1, t2))
         return gaus
 
-    @fn_timer
+    # @fn_timer
     def run_LBP(self, path, isgradient, exp_para, sigma):
         self.isgradiented = isgradient
         self.exp_para = exp_para
@@ -326,7 +328,19 @@ class LBP_Implement(object):
         for i in range(self.Image_Num):
             Histogram = self.calHistogram(self.LBPoperator[:, i], self.gradients[:, i])
             self.Histograms[:, i] = Histogram
-        return self.Histograms.flatten()
+
+        new_hists = np.mat(np.zeros((self.dimension, self.Image_Num)))
+        for i in range(self.Image_Num):
+            hist = self.Histograms[:, i]
+            hist = hist.reshape(self.Patterns, len(self.weights))
+            new_hist = np.mat(np.zeros((self.Patterns, np.count_nonzero(self.weights))))
+            index = 0
+            for j in range(len(self.weights)):
+                if self.weights[j] != 0:
+                    new_hist[:, index] = hist[:, j] * self.weights[j]
+                    index += 1
+            new_hists[:, i] = new_hist.flatten().T
+        return new_hists.flatten(), self.ids[0]
 
     def createHist(self, image_num):
         if self.overlap_ratio > 0:
@@ -377,7 +391,7 @@ class LBP_Implement(object):
 
         # Calculate the recognition rate
 
-    def calculate_Accuracy(self, mypath,shift_vertical,shift_horizonal):
+    def calculate_Accuracy(self, mypath, shift_vertical, shift_horizonal):
         shift_vertical = 0
         shift_horizonal = 0
         # mypath = '/cs/home/jf231/Dissertation/CS5099/Yale_images/Set_3/'
@@ -412,9 +426,9 @@ class LBP_Implement(object):
                 image = cv2.imread(mypath + m, 0)
                 id = int(m[5:7])
                 imageGradient = self.cal_Gradient(np.mat(image))
-                # image = self.gamma_correction(image, self.gamma)
+                image = self.gamma_correction(image, self.gamma)
                 # recogniseImg = cv2.GaussianBlur(recogniseImg, (3, 3), 0)
-                # image = cv2.equalizeHist(image)
+                image = cv2.equalizeHist(image)
                 imageLBP = self.LBP(np.mat(image).flatten().T)
                 histogram = self.calHistogram(imageLBP, imageGradient)
                 histogram = histogram.reshape(self.Patterns, columns)
@@ -457,7 +471,7 @@ class LBP_Implement(object):
                 temp[row][W - col - 1] = average
         temp = temp.flatten()
         sorted_weights = sorted(temp)
-        thresholds = [0.1, 0.8, 0.9, 1]
+        thresholds = [0.3, 0.8, 0.9, 1]
         weight_standard = [0, 1, 2, 4]
         start = -1
         for t in range(4):
@@ -477,8 +491,8 @@ class LBP_Implement(object):
         con_num = len(cons)
         intra_num = int((subject_num * con_num * (con_num - 1)) / 2)
         extra_num = int((subject_num * (subject_num - 1) * con_num))
-        print('intra %d' % intra_num)
-        print('extra %d' % extra_num)
+        # print('intra %d' % intra_num)
+        # print('extra %d' % extra_num)
         if (self.overlap_ratio == 0):
             my_rows = self.h_num
             my_columns = self.w_num

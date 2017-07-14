@@ -8,8 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 import pandas as pd
 
 
-def feature_Select(x1, x2, y1, y2):
-    regions = 121
+def feature_Select(x1, x2, y1, y2, regions):
     importance = np.array([0.0 for i in range(np.shape(x1)[1])])
     extra = np.concatenate((x2, y2.reshape(np.shape(y2)[0], 1)), axis=1)
     extra = pd.DataFrame(extra)
@@ -57,7 +56,7 @@ def feature_Select(x1, x2, y1, y2):
         # y_pred = rf.predict(X_test)
         # print(confusion_matrix(y_test, y_pred))
     importance = np.around(importance / 5, decimals=5)
-    temp = importance.reshape(11, 11)
+    temp = importance.reshape(int(np.sqrt(regions)), int(np.sqrt(regions)))
     H, W = np.shape(temp)
     adjust = int(W / 2)
     for row in range(H):

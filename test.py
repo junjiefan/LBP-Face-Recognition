@@ -16,26 +16,41 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import pandas as pd
-from numpy import *
-
-# paths = [''] * 15
-# for i in range(15):
-#     paths[i] = 'F:/dissertation/PCA/Test/' + str(i) + '/'
-#     os.makedirs(paths[i])
-
-path = 'F:/dissertation/Yale_images/Set_2/'
-for i in range(15):
-    destination = 'F:/dissertation/PCA/Test/' + str(i) + '/'
-    for m in os.listdir(path):
-        id = int(m[5:7])
-        if id ==i:
-            img = cv2.imread(path + m, 0)
-            cv2.imwrite(destination + m, img)
 
 
+# for i in range(1,14):
+#     path = '/cs/home/jf231/Dissertation/CS5099/PCA/Train/' + str(i) + '/'
+#     os.makedirs(path)
+#     path = '/cs/home/jf231/Dissertation/CS5099/PCA/Test1/' + str(i) + '/'
+#     os.makedirs(path)
+#     path = '/cs/home/jf231/Dissertation/CS5099/PCA/Test2/' + str(i) + '/'
+#     os.makedirs(path)
 
 
-
+# path = '/cs/home/jf231/Dissertation/CS5099/All_Images/Set_2/'
+# for i in range(1, 14):
+#     destination = '/cs/home/jf231/Dissertation/CS5099/PCA/Train/' + str(i) + '/'
+#     count = 0
+#     for m in os.listdir(path):
+#         id = int(m[5:7])
+#         if id == i:
+#             img = cv2.imread(path + m, 0)
+#             cv2.imwrite(destination + m, img)
+#             count += 1
+#             if count == 2:
+#                 break
+#
+# for i in range(15, 40):
+#     destination = '/cs/home/jf231/Dissertation/CS5099/PCA/Train/' + str(i) + '/'
+#     count = 0
+#     for m in os.listdir(path):
+#         id = int(m[5:7])
+#         if id == i:
+#             img = cv2.imread(path + m, 0)
+#             cv2.imwrite(destination + m, img)
+#             count += 1
+#             if count == 2:
+#                 break
 
 ########################################################################################################################
 # def Gaussain2D( h1, w1, h2, w2, sigma):
