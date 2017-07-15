@@ -5,7 +5,7 @@ import pandas as pd
 from FeatureSelection import feature_Select
 import cv2
 import multiprocessing as mp
-from PCA_SVD import LBP_PCA_SVD
+from PCA_SVD import PCA_SVD
 
 if __name__ == '__main__':
     R = 1
